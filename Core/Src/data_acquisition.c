@@ -253,7 +253,7 @@ static void process_half_frame(bool is_first_half, const dma_buffer_type_t *dmab
 
 	if (overload_detected) {
 #if BLINK_LEDS
-		leds_single_blink(LED_RED, 1);
+		leds_blink(LEDS_RED);
 #endif
 	}
 

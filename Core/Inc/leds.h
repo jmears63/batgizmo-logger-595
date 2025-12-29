@@ -25,19 +25,20 @@
 
 #include <stdbool.h>
 
-// Define bit values that can be combined:
-#define LED_RED 	1
-#define LED_YELLOW 	2
-#define LED_GREEN 	4
-#define LED_ALL		(LED_RED | LED_YELLOW | LED_GREEN)
-#define LED_NONE	0
+typedef enum {
+	LEDS_RED,
+	LEDS_YELLOW,
+	LEDS_GREEN
+} leds_led_t;
+
+// Special value for all LEDs:
+#define LEDS_ALL -1
 
 void leds_init(void);
 void leds_main_processing(int main_tick_count);
-void leds_set(int mask, bool combine);
-void leds_single_blink(int mask, int priority);
-void leds_flash(int mask, int count, int priority);
-void leds_cancel_signal(void);
-void leds_reset(void);
 
+void leds_set(int led, bool lit);
+void leds_blink(leds_led_t);
+void leds_start_flash(void);
+void leds_reset(void);
 #endif // MY_LEDS_H

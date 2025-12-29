@@ -360,7 +360,7 @@ bool dataprocessor_buffers_get_next(sample_type_t **pBuffer) {
 static void data_processor_buffers_on_trigger(void) {
 
 #if BLINK_LEDS
-	leds_single_blink(LED_YELLOW, 1);
+	leds_blink(LEDS_YELLOW);
 #endif
 
 	if (s_is_triggered) {

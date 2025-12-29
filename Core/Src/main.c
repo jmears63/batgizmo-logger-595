@@ -157,9 +157,9 @@ int main(void)
   sd_lowlevel_init();
 
   // Perform the power on startup sequence:
-  leds_set(LED_ALL, false);
+  leds_set(LEDS_ALL, true);
   init_startup();
-  leds_set(LED_NONE, false);
+  leds_set(LEDS_ALL, false);
 
 #if 0// Handy for debugging date and time.
   // See what the date and time is:
@@ -189,7 +189,7 @@ int main(void)
   {
 	if (*pGuard != 0xDEADBEEF) {
 		// The stack seems to have got out of hand:
-		leds_set(LED_ALL, false);
+		leds_set(LEDS_ALL, true);
 		MY_BREAKPOINT();
 	}
 

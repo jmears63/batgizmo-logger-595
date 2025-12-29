@@ -162,13 +162,13 @@ void usb_mode_main_processing(int main_tick_count)
 #if BLINK_LEDS
 		if (s_just_opened) {
 			if (!sd_present)
-				leds_flash(LED_ALL, 10, 2);
+				leds_start_flash();
 		}
 		else {
 			if (!sd_present && was_present)
-				leds_flash(LED_ALL, 10, 2);
+				leds_start_flash();
 			else if (sd_present && !was_present)
-				leds_cancel_signal();
+				leds_reset();
 		}
 #endif
 		was_present = sd_present;
@@ -177,7 +177,7 @@ void usb_mode_main_processing(int main_tick_count)
 		bool status_good = s_usb_running && usb_handlers_ismounted() && apc_locked_on();
 		(void) status_good;
 #if BLINK_LEDS
-		leds_set(status_good ? LED_GREEN : LED_NONE, false);
+		leds_set(LEDS_GREEN, status_good);
 #endif
 
 		if (s_sd_mounted && !sd_present) {

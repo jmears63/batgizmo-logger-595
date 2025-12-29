@@ -219,13 +219,13 @@ void recording_main_processing(int main_tick_count)
 		if (s_recording_first) {
 			s_recording_first = false;
 			if (!sd_present)
-				leds_flash(LED_ALL, 0, 2);
+				leds_start_flash();
 		}
 		else {
 			if (!sd_present && was_present)
-				leds_flash(LED_ALL, 0, 2);
+				leds_start_flash();
 			else if (sd_present && !was_present)
-				leds_cancel_signal();
+				leds_reset();
 		}
 #endif
 		was_present = sd_present;
@@ -264,7 +264,7 @@ void recording_main_processing(int main_tick_count)
 				// Do we need to start a new data file?
 				if (s_file_samples_written >= s_max_samples_per_file) {
 #if BLINK_LEDS
-					leds_set(LED_GREEN, false);
+					leds_set(LEDS_GREEN, true);
 #endif
 					// Close the wav file and open a new one:
 					if (s_fx_pFile) {
@@ -276,21 +276,20 @@ void recording_main_processing(int main_tick_count)
 
 					s_file_samples_written = 0;
 #if BLINK_LEDS
-					leds_set(LED_NONE, false);
+					leds_set(LEDS_GREEN, false);
 #endif
 				}
 
 				if (s_fx_pFile) {
 #if BLINK_LEDS
-					leds_set(LED_GREEN, false);
+					leds_set(LEDS_GREEN, true);
 #endif
 					// The following line blocks while it writes. Perhaps it would be smarter to kick off
 					// an async write, so as not to block the main thread. One day.
 					storage_wav_file_append_data(s_fx_pFile, (sample_type_t *) buffer_to_write, DATA_BUFFER_ENTRIES);
 					s_file_samples_written += DATA_BUFFER_ENTRIES;
-
 #if BLINK_LEDS
-					leds_set(LED_NONE, false);
+					leds_set(LEDS_GREEN, false);
 #endif
 				}
 			}
