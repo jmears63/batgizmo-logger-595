@@ -305,7 +305,6 @@ void auto_mode_main_processing(int main_tick_count)
 
 void auto_mode_main_fast_processing(int main_tick_count)
 {
-	// TODO maybe check the trigger flag here.
 }
 
 /**

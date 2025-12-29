@@ -87,19 +87,6 @@ void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
   {
   /* USER CODE BEGIN SDMMC1_MspInit 0 */
 
-  /*
-	Hacktastic! Don't try this at home.
-	We want pull-ups on SDMMC to avoid a resistor on the PCB. The MX view doesn't
-	allow this selection.
-	*/
-#if 1	// TODO JM review this
-#undef GPIO_NOPULL
-#define GPIO_NOPULL GPIO_PULLUP
-
-#undef GPIO_SPEED_FREQ_HIGH
-#define GPIO_SPEED_FREQ_HIGH GPIO_SPEED_FREQ_MEDIUM
-#endif
-
   /* USER CODE END SDMMC1_MspInit 0 */
 
   /** Initializes the peripherals clock
