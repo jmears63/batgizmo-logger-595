@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>
+<Packages DBVersion="2.0">
+    <ThirdParties>
+        <ThirdParty Name="CMSIS-DSP" Vendor="ARM">
+            <ShortDescription>CMSIS Embedded Compute Library</ShortDescription>
+            <SCM type="git">https://github.com/ARM-software/CMSIS-DSP.git</SCM>
+            <PackDescription InstallPath="/home/jmears/STM32Cube/Repository/Packs/ARM/CMSIS-DSP/1.16.2" Release="1.16.2" ReleaseUrl="https://www.keil.com/pack/ARM.CMSIS-DSP.1.16.2.pack" Status="New">
+                <Note Release="&#10;Source code repository information :&#10;    - Repository type: git&#10;    - Repository descriptor: https://github.com/ARM-software/CMSIS-DSP.git&#10;&#10;Release information :&#10;&#10;      * Improvements to documentation&#10;      * Added arm_fir_decimate_f64&#10;      * Removed some gcc workarounds that are no more needed for Helium&#10;      * Removed redundant test in arm_atan2_q15 and arm_atan2_q31&#10;      * Replaced INFINITY by maximum positive float&#10;      * Replaced hex constants with 2's complement equivalents&#10;      * Added C++ template extension (outside of pack - headers available from github repository)&#10;      * Added new compilation defines (ARM_DSP_ATTRIBUTE, ARM_DSP_TABLE_ATTRIBUTE and ARM_DSP_CUSTOM_CONFIG)&#10;      * Solved several github issues&#10;      * Corrected wrong version number in pack for v1.16.0&#10;      * Corrected issue #201 in v1.16.1 (related to new ARM_DSP_ATTRIBUTE)&#10;    "/>
+            </PackDescription>
+        </ThirdParty>
+    </ThirdParties>
+</Packages>

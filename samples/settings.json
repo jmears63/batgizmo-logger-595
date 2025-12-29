@@ -1,0 +1,14 @@
+{
+	"max_sampling_time_s": 5.0,
+	"min_sampling_time_s": 1.0,
+	"sensitivity_range": 3,
+	"sensitivity_disabled": false,
+  	"pretrigger_time_s":0.5,
+	"write_settings_to_sd": true,
+	"trigger_max_count": 2,
+	"trigger": 		"* x 	x 	x 	x 	x 	* * * * * * * * * *"
+	"trigger_thresholds": 	"63 67 55 51 47 47 45 43 42 42 42 36 36 36 36 36",
+	"disable_usb_msc": false,
+	"location": "1.2345 2.3456"
+}
+
