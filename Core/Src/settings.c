@@ -42,7 +42,8 @@ static settings_t s_settings = {
 		// by providing a settings file on the SD card.
 		max_sampling_time_s: 5,		// Align with the BTO pipeline.
 		min_sampling_time_s: 2,
-		sensitivity_range: 3,		// Revert to 3.
+		pretrigger_time_s: 0.5,
+		sensitivity_range: 3,
 		sensitivity_disable: false,
 		write_settings_to_sd: 1,
 		trigger_max_count: 16,
@@ -51,7 +52,6 @@ static settings_t s_settings = {
 		disable_usb_msc: false,		// TODO: true is incompatible with the build with ENABLE_USB_MSC defined as 0.
 		longitude: 0,
 		latitude: 0,
-		pretrigger_time_s: 0.5,
 
 		_trigger_thresholds: {0},
 		_trigger_flags: {false},
