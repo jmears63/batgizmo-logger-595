@@ -47,8 +47,8 @@ static settings_t s_settings = {
 		sensitivity_disable: false,
 		write_settings_to_sd: 1,
 		trigger_max_count: 16,
-		trigger_string: 			"*  x  x  x  x  x  x  x  x  x  x  x  x  x  x  x",
-		trigger_thresholds_string: 	"63 67 55 51 47 47 45 43 42 42 42 36 36 36 36 36",
+		trigger_string: 			"*  x  x  x  x  x  x  x  x  x  *  *  *  *  *  *",
+		trigger_thresholds_string: 	"67 67 51 51 47 47 45 43 42 42 42 36 36 36 36 36",
 		disable_usb_msc: false,		// TODO: true is incompatible with the build with ENABLE_USB_MSC defined as 0.
 		longitude: 0,
 		latitude: 0,
@@ -403,7 +403,7 @@ size_t settings_get_json_settings_string(char *buf, size_t buflen)
 			"  \"sensitivity_disable\":%s,\n"			\
 			"  \"write_settings_to_sd\":%s,\n"			\
 			"  \"trigger_max_count\":%d,\n"				\
-			"  \"trigger_string\":\"%s\",\n"			\
+			"  \"trigger\":\"%s\",\n"			\
 			"  \"trigger_thresholds\":\"%s\",\n"		\
 			"  \"disable_usb_msc\":%s,\n"				\
 			"  \"logger_sampling_rate_index\":%d,\n"				\
