@@ -48,6 +48,7 @@ static bool s_recording_opened = false;
 static bool s_recording_primed = false;		// Has recording_prime been called?
 static bool s_recording_started = false;
 static bool s_recording_first = false;
+static int s_sampling_rate = 0;
 
 /*
  * Here's how to use the functions in this module from another module:
@@ -77,7 +78,7 @@ void recording_init(void)
 	s_recording_primed = false;
 }
 
-void recording_open(void)
+void recording_open(int sampling_rate)
 {
 	// Write the settings at the start of the session, if required. Do this here rather
 	// than when writing the first data file to avoid extra latency at that time.
@@ -96,6 +97,7 @@ void recording_open(void)
 	s_recording_first = true;
 	s_recording_primed = false;
 	s_recording_started = false;
+	s_sampling_rate = sampling_rate;
 }
 
 static void close_or_clean_up(FX_MEDIA *pMedium, FX_FILE *pFile) {
@@ -137,8 +139,8 @@ void recording_prime(void)
 	s_fx_pMedium = storage_mount(STORAGE_MODE);	// ~ 100+250 ms, or 100+100ms with STORAGE_NORMAL.
 	if (s_fx_pMedium) {
 		// ~300 ms:
-		s_fx_pFile = storage_open_wav_file(s_fx_pMedium, &s_fx_file, SAMPLING_RATE, "(primed)");
-		s_max_samples_per_file = settings_get()->max_sampling_time_s * SAMPLING_RATE;
+		s_fx_pFile = storage_open_wav_file(s_fx_pMedium, &s_fx_file, s_sampling_rate, "(primed)");
+		s_max_samples_per_file = settings_get()->max_sampling_time_s * s_sampling_rate;
 		s_file_samples_written = 0;
 
 		if (s_fx_pFile) {
@@ -183,8 +185,8 @@ void recording_stop(bool go_to_standby)
 		// Prepare for another recording. Leave the SD card mounted, and open a new file ready:
 		if (s_fx_pMedium) {
 			// ~300 ms:
-			s_fx_pFile = storage_open_wav_file(s_fx_pMedium, &s_fx_file, SAMPLING_RATE, "(preopened)");
-			s_max_samples_per_file = settings_get()->max_sampling_time_s * SAMPLING_RATE;
+			s_fx_pFile = storage_open_wav_file(s_fx_pMedium, &s_fx_file, s_sampling_rate, "(preopened)");
+			s_max_samples_per_file = settings_get()->max_sampling_time_s * s_sampling_rate;
 			s_file_samples_written = 0;
 
 			if (s_fx_pFile) {
@@ -241,7 +243,7 @@ void recording_main_processing(int main_tick_count)
 			// The SD card has reappeared, and we should be recording, so mount it and open a new file:
 			s_fx_pMedium = storage_mount(STORAGE_MODE);
 			if (s_fx_pMedium) {
-				s_fx_pFile = storage_open_wav_file(s_fx_pMedium, &s_fx_file, SAMPLING_RATE, "continued");
+				s_fx_pFile = storage_open_wav_file(s_fx_pMedium, &s_fx_file, s_sampling_rate, "continued");
 				s_file_samples_written = 0;
 			}
 		}
@@ -272,7 +274,7 @@ void recording_main_processing(int main_tick_count)
 						s_fx_pFile = NULL;
 					}
 
-					s_fx_pFile = storage_open_wav_file(s_fx_pMedium, &s_fx_file, SAMPLING_RATE, "continued");
+					s_fx_pFile = storage_open_wav_file(s_fx_pMedium, &s_fx_file, s_sampling_rate, "continued");
 
 					s_file_samples_written = 0;
 #if BLINK_LEDS

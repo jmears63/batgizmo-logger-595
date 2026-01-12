@@ -29,6 +29,11 @@
 #define MAX_TRIGGER_MATCH_CLAUSES 16
 #define SETTINGS_TRIGGER_MATCH_LEN 128
 #define SETTINGS_IGNORE_TRIGGER_VALUE ((q31_t) -1)
+#define MAX_SCHEDULE_INTERVALS 20
+
+#define SETTINGS_SAMPLING_RATE_MULTIPLIER_KHZ 48
+#define SETTINGS_MIN_SAMPLING_RATE_INDEX 5
+#define SETTINGS_MAX_SAMPLING_RATE_INDEX 11
 
 typedef struct {
 	float max_sampling_time_s;
@@ -42,6 +47,7 @@ typedef struct {
 	bool disable_usb_msc;
 	double longitude, latitude;				// Looking at example data from other detectors, 6 dps seems to be used.
 	float pretrigger_time_s;
+	int logger_sampling_rate_index;
 
 	// Some calculated fields:
 	q31_t _trigger_thresholds[MAX_TRIGGER_MATCH_CLAUSES];	// Values for comparison with FFT buckets.
@@ -59,12 +65,11 @@ typedef struct {
 	int duration_minutes;		// Use duration rather than end time to make midnight wrapping easier.
 } schedule_interval_t;
 
-#define MAX_SCHEDULE_INTERVALS 20
-
 void settings_init(void);
 const settings_t *settings_get(void);
 bool settings_parse_and_process_json_settings(const char *json_string);
 size_t settings_get_json_settings_string(char *buf, size_t buflen);
-int settings_parse_and_normalize_schedule(const char *json, schedule_interval_t intervals[]);
+int settings_parse_aSAMPLES_PER_FRAMEnd_normalize_schedule(const char *json, schedule_interval_t intervals[]);
+int settings_get_logger_sampling_rate(void);
 
 #endif /* INC_SETTINGS_H_ */

@@ -27,7 +27,7 @@
 
 void data_processor_uac_init(void);
 void data_processor_uac_reset(void);
-void data_processor_uac(const sample_type_t *, int buffer_offset);
+void data_processor_uac(const sample_type_t *, int buffer_offset, int count);
 void data_processor_uac_getUSBData(int16_t *usb_buffer, uint16_t samples_requested);
 
 #endif // MY_DATA_PROCESSOR_UAC_H

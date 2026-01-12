@@ -24,7 +24,7 @@
 #define MY_RECORDING_H
 
 void recording_init(void);
-void recording_open(void);
+void recording_open(int sampling_rate);
 void recording_prime(void);
 #if 0
 void recording_start(const char *trigger);

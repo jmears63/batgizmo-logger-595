@@ -27,7 +27,8 @@
 
 #include "mode_manual.h"
 #include "storage.h"
-#include "settings.h"
+#include "settings.h"#include "tusb_config.h"
+
 #include "gain.h"
 #include "init.h"
 #include "tim.h"
@@ -40,6 +41,7 @@
 #include "streaming.h"
 #include "recording.h"
 #include "trigger.h"
+#include "tusb_config.h"
 
 #define BLINK_LEDS 1
 
@@ -63,11 +65,12 @@ static void init_manual_mode(void)
 static void open_manual_mode(void)
 {
 	// Acquired data will be processed for the SD card:
-	data_processor_buffers_reset(DATA_PROCESSOR_CONTINUOUS);
+	const int sampling_rate = settings_get_logger_sampling_rate();
+	data_processor_buffers_reset(DATA_PROCESSOR_CONTINUOUS, sampling_rate);
 	data_acquisition_set_processor(data_processor_buffers);
 
-	streaming_start();
-	recording_open();
+	streaming_start(settings_get()->logger_sampling_rate_index);
+	recording_open(sampling_rate);
 #if 0
 	recording_start("manual");
 #else

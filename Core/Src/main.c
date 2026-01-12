@@ -42,7 +42,6 @@
 
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include <data_processor_buffers.h>
 #include "main.h"
 #include "app_filex.h"
 #include "gpdma.h"
@@ -122,7 +121,7 @@ int main(void)
 
   /* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initialises the Flash interface and the Systick. */
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
   /* USER CODE BEGIN Init */

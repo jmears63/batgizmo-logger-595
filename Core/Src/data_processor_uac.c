@@ -26,7 +26,7 @@
 
 // Define a long buffer we can use to queue samples in:
 #define SUPERBUFFERFACTOR 4
-#define SUPERBUFFERLEN (SAMPLES_PER_FRAME * SUPERBUFFERFACTOR)
+#define SUPERBUFFERLEN (USB_SAMPLES_PER_FRAME * SUPERBUFFERFACTOR)
 
 typedef struct {
 	sample_type_t buffer[SUPERBUFFERLEN];
@@ -58,7 +58,7 @@ void data_processor_uac_reset(void)
  *
  * The FIFO implementation from tusb looks safe to use from one ISR to another.
  */
-void data_processor_uac(const sample_type_t *pDataBuffer, int buffer_offset)
+void data_processor_uac(const sample_type_t *pDataBuffer, int buffer_offset, int count)
 {
-	tud_audio_write((const void *) (pDataBuffer + buffer_offset), HALF_SAMPLES_PER_FRAME * sizeof(*pDataBuffer));
+	tud_audio_write((const void *) (pDataBuffer + buffer_offset), count * sizeof(*pDataBuffer));
 }

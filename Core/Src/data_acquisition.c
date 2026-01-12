@@ -5,7 +5,6 @@
 
 #include "storage.h"
 #include "leds.h"
-#include "settings.h"
 #include "gain.h"
 
 
@@ -47,8 +46,10 @@
 #define DMABUFFER_GUARD_OFFSET SAMPLES_PER_FRAME
 #define DMABUFFER_GUARD_COUNT 2		// 32 bits worth.
 
-RAM_DATA_SECTION dma_buffer_type_t g_dmabuffer1[ROUNDUP32(SAMPLES_PER_FRAME + DMABUFFER_GUARD_COUNT, sizeof(dma_buffer_type_t))] __ALIGNED(32);
-// SRAM4_DATA_SECTION dma_buffer_type_t dmabuffer4[ROUNDUP32(SAMPLES_PER_FRAME + DMABUFFER_GUARD_COUNT, sizeof(dma_buffer_type_t))] __ALIGNED(32);
+#define MAX_SAMPLES_PER_FRAME (SETTINGS_SAMPLING_RATE_MULTIPLIER_KHZ * SETTINGS_MAX_SAMPLING_RATE_INDEX)
+
+RAM_DATA_SECTION dma_buffer_type_t g_dmabuffer1[ROUNDUP32(MAX_SAMPLES_PER_FRAME + DMABUFFER_GUARD_COUNT, sizeof(dma_buffer_type_t))] __ALIGNED(32);
+// SRAM4_DATA_SECTION dma_buffer_type_t dmabuffer4[ROUNDUP32(MAX_SAMPLES_PER_FRAME + DMABUFFER_GUARD_COUNT, sizeof(dma_buffer_type_t))] __ALIGNED(32);
 
 // Stuff relating to DSP using the library CMSIS:
 
@@ -89,13 +90,13 @@ static BIQUAD_INSTANCE_TYPE biquad_hpf_instance;
 		-b1 / normalizer,		\
 		-b2 / normalizer
 
-static q31_t s_raw_buffer_q31[SAMPLES_PER_FRAME];
-static q31_t s_filtered_buffer1_q31[SAMPLES_PER_FRAME];
-static q15_t s_filtered_buffer1_q15[SAMPLES_PER_FRAME];
+static q31_t s_raw_buffer_q31[MAX_SAMPLES_PER_FRAME];
+static q31_t s_filtered_buffer1_q31[MAX_SAMPLES_PER_FRAME];
+static q15_t s_filtered_buffer1_q15[MAX_SAMPLES_PER_FRAME];
 
 #endif
 
-static sample_type_t s_raw_buffer_q15[SAMPLES_PER_FRAME];
+static sample_type_t s_raw_buffer_q15[MAX_SAMPLES_PER_FRAME];
 
 static data_processor_t s_data_processor = NULL;
 
@@ -106,8 +107,11 @@ static void process_half_frame(bool is_first_half, const dma_buffer_type_t *dmab
 		sample_type_t offset, int leftshift);
 
 volatile sample_type_t *g_raw_half_frame = NULL;
+volatile int g_raw_half_frame_size = 0;
 volatile int g_raw_half_frame_counter = 0;
 volatile bool g_raw_half_frame_ready = false;
+
+static int s_half_samples_per_frame = 0;		// Dumb initialisation value so it is obvious if we fail to set this.
 
 /*
  * Here are the DMA complete and half complete interrupts handlers.
@@ -169,7 +173,8 @@ void data_acquisition_enable_capture(bool flag) {
 void data_acquisition_init(void)
 {
 	s_data_processor = NULL;
-	data_acquisition_reset();
+	// Dummy value of 0 until we get reset for specific mode:
+	data_acquisition_reset(0);
 
 #if DO_BIQUAD
 
@@ -205,11 +210,13 @@ void data_acquisition_init(void)
 #endif
 }
 
-void data_acquisition_reset(void) {
+void data_acquisition_reset(int samples_per_frame) {
 	s_conv_counter = 0;
 	s_signal_offset_correction = 0;
 	s_enable_capture = false;
+	s_half_samples_per_frame = samples_per_frame >> 1;
 	g_raw_half_frame = NULL;
+	g_raw_half_frame_size = 0;
 	g_raw_half_frame_counter = 0;
 	g_raw_half_frame_ready = false;
 
@@ -230,15 +237,15 @@ static void process_half_frame(bool is_first_half, const dma_buffer_type_t *dmab
 		sample_type_t offset, int leftshift)
 {
 	// A half DMA buffer is ready for us:
-	const int buffer_offset = is_first_half ? 0 : HALF_SAMPLES_PER_FRAME;
-	const int samples_to_process = HALF_SAMPLES_PER_FRAME;
+	const int buffer_offset = is_first_half ? 0 : s_half_samples_per_frame;
+	const int samples_to_process = s_half_samples_per_frame;
 
 	// Basic scale and offset to end up with sample_type_t:
 	// TODO consider replacing the following with CMSIS vector operations, or writing our own composite one.
 	bool overload_detected = false;
 	const dma_buffer_type_t *pSource = dmabuffer + buffer_offset;
 	sample_type_t *pDest = s_raw_buffer_q15 + buffer_offset;
-	for (int i = 0; i < HALF_SAMPLES_PER_FRAME; i++) {
+	for (int i = 0; i < s_half_samples_per_frame; i++) {
 		uint16_t value = *pSource++;
 
 #if 0
@@ -259,6 +266,7 @@ static void process_half_frame(bool is_first_half, const dma_buffer_type_t *dmab
 
 	// Flag globally that a raw data buffer is ready:
 	g_raw_half_frame = s_raw_buffer_q15 + buffer_offset;
+	g_raw_half_frame_size = s_half_samples_per_frame;
 	g_raw_half_frame_counter++;
 	g_raw_half_frame_ready = true;
 
@@ -276,7 +284,7 @@ static void process_half_frame(bool is_first_half, const dma_buffer_type_t *dmab
 
 	// Pass the data through to the processor:
 	if (s_data_processor != NULL) {
-		s_data_processor(pBufferToUse, buffer_offset);
+		s_data_processor(pBufferToUse, buffer_offset, s_half_samples_per_frame);
 	}
 
 // TODO investigate this further. USB interrupt can show as pending even though it has more priority (0).

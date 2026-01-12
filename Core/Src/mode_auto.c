@@ -36,6 +36,7 @@
 #include "trigger.h"
 #include "init.h"
 #include "adc.h"
+#include "tusb_config.h"
 
 #define BLINK_LEDS 1
 
@@ -98,7 +99,7 @@ static void init_auto_mode(void)
 static void open_auto_mode(void)
 {
 	// Acquired data will be processed for the SD card:
-	data_processor_buffers_reset(DATA_PROCESSOR_TRIGGERED);
+	data_processor_buffers_reset(DATA_PROCESSOR_TRIGGERED, settings_get_logger_sampling_rate());
 	data_acquisition_set_processor(data_processor_buffers);
 	reset_vars();
 	s_main_processing_enabled = true;
@@ -485,7 +486,7 @@ static void exit_standby(void)
 
 static void enter_active(void)
 {
-	streaming_start();
+	streaming_start(settings_get()->logger_sampling_rate_index);
 	s_streaming_started = true;
 
 	// Tell the data module we are ready for it to tell us about ready data buffers:
@@ -493,7 +494,7 @@ static void enter_active(void)
 
 	// Declare our intention to do some recording at some point, though maybe
 	// not just yet:
-	recording_open();
+	recording_open(settings_get_logger_sampling_rate());
 
 	// Prime recording so that we can be ready to start recording with low latency:
 	recording_prime();

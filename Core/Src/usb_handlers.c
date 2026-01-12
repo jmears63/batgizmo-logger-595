@@ -35,9 +35,6 @@
 // MACRO CONSTANT TYPEDEF PROTYPES
 //--------------------------------------------------------------------+
 
-#define SAMPLE_RATE   (SAMPLES_PER_FRAME * 1000)
-
-
 // Audio controls
 // Current states
 static bool mute[CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX + 1] =       // +1 for master channel 0
@@ -79,7 +76,7 @@ static bool s_usb_mounted = false;
 void usb_handlers_init(void)
 {
   // Initialise USB state.
-  sampFreq = SAMPLE_RATE;
+  sampFreq = USB_SAMPLING_RATE;
   clkValid = 1;
 
   s_usb_mounted = false;
@@ -176,7 +173,7 @@ static bool audio10_set_req_ep(tusb_control_request_t const *p_request, uint8_t 
         TU_LOG2("EP set current freq: %" PRIu32 "\r\n", sampFreq);
 
         // Only allow them to set the correct sampling rate:
-        if (sampFreq == SAMPLE_RATE)
+        if (sampFreq == USB_SAMPLING_RATE)
         	return true;
       }
       break;

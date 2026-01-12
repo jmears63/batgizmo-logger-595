@@ -52,6 +52,7 @@
 #include "tusb.h"
 #include "main.h"
 #include "settings.h"
+#include "tusb_config.h"
 
 #define USB_VID   0x1209		// Vendor id.
 #define USB_BCD   0x0100		// USB version 1.0.	This is not the speed.
@@ -131,7 +132,7 @@ uint8_t const desc_uac1_configuration[] = {
 		  /*_nBitsUsedPerSample*/ CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX*8,
 		  /*_epin*/ 0x80 | EPNUM_AUDIO,
 		  /*_epsize*/ CFG_TUD_AUDIO_EP_SZ_IN,	// JM TODO: needs to be different for HS.
-		  SAMPLING_RATE)
+		  USB_SAMPLING_RATE)
 };
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR

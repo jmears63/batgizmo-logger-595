@@ -56,11 +56,9 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
-#define FIRMWARE_VERSION "1.0.0"	// Semantic versioning.
+#include "settings.h"
 
-#define SAMPLES_PER_FRAME 384
-#define HALF_SAMPLES_PER_FRAME (SAMPLES_PER_FRAME / 2)
-#define SAMPLING_RATE (SAMPLES_PER_FRAME * 1000)
+#define FIRMWARE_VERSION "1.1.0"	// Semantic versioning.
 
 /*
  * When code or data access needs to be fast and deterministic, use these

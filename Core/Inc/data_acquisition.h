@@ -30,7 +30,7 @@
 
 typedef uint16_t dma_buffer_type_t;
 typedef int16_t sample_type_t;
-typedef void(*data_processor_t)(const sample_type_t *, int buffer_offset);
+typedef void(*data_processor_t)(const sample_type_t *, int buffer_offset, int count);
 
 
 extern RAM_DATA_SECTION dma_buffer_type_t g_dmabuffer1[] __ALIGNED(32);
@@ -38,7 +38,7 @@ extern RAM_DATA_SECTION dma_buffer_type_t g_dmabuffer1[] __ALIGNED(32);
 
 void data_acquisition_init(void);
 void data_acquisition_main_processing(void);
-void data_acquisition_reset(void);
+void data_acquisition_reset(int samples_per_frame);
 int data_acquisition_get_conv_counter(void);
 void data_acquisition_set_signal_offset_correction(int offset);
 void data_acquisition_enable_capture(bool flag);
@@ -58,6 +58,7 @@ void data_acquisition_set_processor(data_processor_t processor);
 
 // Communication between modules:
 extern volatile sample_type_t *g_raw_half_frame;
+extern volatile int g_raw_half_frame_size;
 extern volatile int g_raw_half_frame_counter;
 extern volatile bool g_raw_half_frame_ready;
 

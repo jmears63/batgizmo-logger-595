@@ -42,7 +42,8 @@ static settings_t s_settings = {
 		// by providing a settings file on the SD card.
 		max_sampling_time_s: 5,		// Align with the BTO pipeline.
 		min_sampling_time_s: 2,
-		sensitivity_range: 3,		// Revert to 3.
+		pretrigger_time_s: 0.5,
+		sensitivity_range: 3,
 		sensitivity_disable: false,
 		write_settings_to_sd: 1,
 		trigger_max_count: 16,
@@ -51,7 +52,7 @@ static settings_t s_settings = {
 		disable_usb_msc: false,		// TODO: true is incompatible with the build with ENABLE_USB_MSC defined as 0.
 		longitude: 0,
 		latitude: 0,
-		pretrigger_time_s: 0.5,
+		logger_sampling_rate_index: 8,		// Sampling rate as multiples of 48 kHz: 5:240, 6:288, 7: 336, 8:384, 9:432: 10:480, 11:528
 
 		_trigger_thresholds: {0},
 		_trigger_flags: {false},
@@ -284,6 +285,14 @@ bool settings_parse_and_process_json_settings(const char *json)
 						s_settings._location_present = false;
 					}
 				}
+				else if (json_eq_string(json, &token, "logger_sampling_rate_index")) {
+					// The value is the next token:
+					token = tokens[++i];
+					int int_value;
+					if (json_get_integer(json, &token, &int_value))
+						s_settings.logger_sampling_rate_index = clip_to_int_range(int_value,
+								SETTINGS_MIN_SAMPLING_RATE_INDEX, SETTINGS_MAX_SAMPLING_RATE_INDEX);
+				}
 				else {
 					// Intentionally ignore unknown tokens to allow for compatibility when we add new tokens.
 				}
@@ -395,8 +404,9 @@ size_t settings_get_json_settings_string(char *buf, size_t buflen)
 			"  \"write_settings_to_sd\":%s,\n"			\
 			"  \"trigger_max_count\":%d,\n"				\
 			"  \"trigger_string\":\"%s\",\n"			\
-			"  \"trigger_thresholds\":\"%s\",\n"			\
+			"  \"trigger_thresholds\":\"%s\",\n"		\
 			"  \"disable_usb_msc\":%s,\n"				\
+			"  \"logger_sampling_rate_index\":%d,\n"				\
 			"}\n",
 			s_settings._firmware_version,
 			s_settings.max_sampling_time_s,
@@ -408,7 +418,8 @@ size_t settings_get_json_settings_string(char *buf, size_t buflen)
 			s_settings.trigger_max_count,
 			s_settings.trigger_string,
 			s_settings.trigger_thresholds_string,
-			s_settings.disable_usb_msc ? "true" : "false"
+			s_settings.disable_usb_msc ? "true" : "false",
+			s_settings.logger_sampling_rate_index
 			);
 
 	return strlen(buf);
@@ -581,4 +592,8 @@ int settings_parse_and_normalize_schedule(const char *json, schedule_interval_t 
 	}
 
 	return calculate_resultant_intervals(intervals, interval_index, resultant_intervals);
+}
+
+int settings_get_logger_sampling_rate(void) {
+	return s_settings.logger_sampling_rate_index * SETTINGS_SAMPLING_RATE_MULTIPLIER_KHZ * 1000;
 }

@@ -31,9 +31,9 @@ typedef enum {
 } data_processor_mode_t;
 
 void data_processor_buffers_init(void);
-void data_processor_buffers_reset(data_processor_mode_t mode);
+void data_processor_buffers_reset(data_processor_mode_t mode, int samples_per_second);
 void data_processor_buffers_fast_main_processing(int main_tick_count);
-void data_processor_buffers(const sample_type_t *, int buffer_offset);
+void data_processor_buffers(const sample_type_t *, int buffer_offset, int count);
 
 // We will write to SD in exact chunks of 32 KB, intened to align with blocks and sectors in the SD card
 // file system, and should therefore be efficient to write:

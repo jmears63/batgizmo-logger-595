@@ -121,15 +121,20 @@
 // AUDIO CLASS DRIVER CONFIGURATION
 //--------------------------------------------------------------------
 
-// Have a look into audio_device.h for all configurations
-#define CFG_TUD_AUDIO_FUNC_1_SAMPLE_RATE (SAMPLES_PER_FRAME * 1000)		// JM Assumption: FS USB.
+#define USB_SAMPLING_RATE_INDEX 8		// 384
+#define USB_SAMPLES_PER_FRAME (SETTINGS_SAMPLING_RATE_MULTIPLIER_KHZ * USB_SAMPLING_RATE_INDEX)
+#define USB_SAMPLING_RATE (USB_SAMPLING_RATE_INDEX * SETTINGS_SAMPLING_RATE_MULTIPLIER_KHZ * 1000)
+#define USB_HALF_SAMPLES_PER_FRAME (USB_SAMPLES_PER_FRAME >> 1)
+#define USB_FRAMES_PERSECOND 1000		// Assume FS USB for now.
+
+
+#define CFG_TUD_AUDIO_FUNC_1_SAMPLE_RATE (USB_SAMPLES_PER_FRAME * 1000)		// JM Assumption: FS USB.
 
 // JM: Hard coded the fact this there is one channel of 16 bit data:
 #define CFG_TUD_AUDIO_ENABLE_EP_IN                    1
 #define CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX    2         // This value is not required by the driver, it parses this information from the descriptor once the alternate interface is set by the host - we use it for the setup
 #define CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX            1         // This value is not required by the driver, it parses this information from the descriptor once the alternate interface is set by the host - we use it for the setup
 #define CFG_TUD_AUDIO_EP_SZ_IN                        TUD_AUDIO_EP_SIZE(TUD_OPT_HIGH_SPEED, CFG_TUD_AUDIO_FUNC_1_SAMPLE_RATE, CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX, CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX)
-
 
 
 #define CFG_TUD_UACv1_FUNC_1_DESC_LEN                                 TUD_UACv1_MIC_X_CH_DESC_LEN

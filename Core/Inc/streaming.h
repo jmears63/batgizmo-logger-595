@@ -23,7 +23,7 @@
 #ifndef MY_STREAMING_H
 #define MY_STREAMING_H
 
-void streaming_start(void);
+void streaming_start(int sampling_rate_index);
 void streaming_stop(void);
 
 #endif

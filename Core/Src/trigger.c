@@ -59,7 +59,7 @@ static FFT_INSTANCE_TYPE fft_instance;
 	# Print the C string
 	print(c_string)
 */
-static float fft_window_float[SAMPLES_PER_FRAME] = {
+static float fft_window_float[FFT_WINDOW_SIZE] = {
 		0.00000000f, 0.01023503f, 0.04052109f, 0.08961828f, 0.15551654f,
 		0.23551799f, 0.32634737f, 0.42428611f, 0.52532458f, 0.62532627f, 0.72019708f, 0.80605299f, 0.87937906f,
 		0.93717331f, 0.97706963f, 0.99743466f, 0.99743466f, 0.97706963f, 0.93717331f, 0.87937906f, 0.80605299f,
@@ -67,16 +67,16 @@ static float fft_window_float[SAMPLES_PER_FRAME] = {
 		0.04052109f, 0.01023503f, 0.00000000f
 };
 
-static q15_t fft_window_q15[SAMPLES_PER_FRAME];
+static q15_t fft_window_q15[FFT_WINDOW_SIZE];
 
 static bool check_for_trigger(const q31_t fft_squared_output[], volatile bool *matches);
-static bool check_each_window(volatile const q15_t *pRawData);
+static bool check_each_window(volatile const q15_t *pRawData, int count);
 
 
 void trigger_init(void)
 {
 	FFT_INIT(&fft_instance, FFT_WINDOW_SIZE, 0, 1);
-    arm_float_to_q15(fft_window_float, fft_window_q15, SAMPLES_PER_FRAME);
+    arm_float_to_q15(fft_window_float, fft_window_q15, FFT_WINDOW_SIZE);
 
 	// g_triggered = false;
 	memset((void*) g_trigger_matches, '\0', sizeof(g_trigger_matches));
@@ -96,7 +96,7 @@ void trigger_main_fast_processing(int main_tick_count)
 		// Consume the trigger:
 		g_raw_half_frame_ready = false;
 		int count1 = g_raw_half_frame_counter;
-		bool triggered = check_each_window(g_raw_half_frame);
+		bool triggered = check_each_window(g_raw_half_frame, g_raw_half_frame_size);
 		// Detect a race condition: ignore any trigger value as the raw data was being updated
 		// while we were working on it.
 		if (triggered) {
@@ -109,7 +109,7 @@ void trigger_main_fast_processing(int main_tick_count)
 	}
 }
 
-static bool check_each_window(volatile const q15_t *pRawData)
+static bool check_each_window(volatile const q15_t *pRawData, int count)
 {
 	static q15_t fft_output[FFT_WINDOW_SIZE * 2], working_copy[FFT_WINDOW_SIZE];
 	static q31_t fft_squared_modulus[FFT_WINDOW_SIZE / 2];
@@ -120,13 +120,13 @@ static bool check_each_window(volatile const q15_t *pRawData)
 	// There aren't enough CPU cycles to evaluate all the windows:
 	const int windows_to_check_log2 = 1;	// We'll evaluate two of the windows, distributed.
 	const int windows_to_check = 1 << windows_to_check_log2;
-	const int increment = HALF_SAMPLES_PER_FRAME >> windows_to_check_log2;
+	const int increment = count >> windows_to_check_log2;
 
 	for (int i = 0; i < windows_to_check; i++, pFftSrc += increment) {
 		// The FFT function modifies the source buffer, so we copy it. An optimization might
 		// be modify it in place, once we no longer need it:
 		memcpy(working_copy, (void*) pFftSrc, sizeof(working_copy));
-		// Apply the window to avoid spectral leakage:
+		// Apply the window to minimize spectral leakage:
 		// Calculate the frequency buckets:
 		arm_mult_q15(fft_window_q15, working_copy, working_copy, FFT_WINDOW_SIZE);
 		arm_rfft_q15(&fft_instance, working_copy, fft_output);

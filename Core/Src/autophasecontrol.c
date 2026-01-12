@@ -27,6 +27,7 @@
 #include "main.h"
 #include "adc.h"
 #include "leds.h"
+#include "tusb_config.h"
 
 #pragma GCC push_options
 // Useful to disable optimisation when debugging this code.	Comment this out when not needed:
@@ -42,7 +43,7 @@ static uint32_t get_dma_offset(void);
 #define DO_DIAGNOSTICS 1	// Uses valuable SRAM.
 
 #if DO_DIAGNOSTICS
-#define DIAGNOSTICS_SAMPLES (SAMPLES_PER_FRAME * 4)
+#define DIAGNOSTICS_SAMPLES (USB_SAMPLES_PER_FRAME * 4)
 int16_t s_diagnostics[DIAGNOSTICS_SAMPLES], s_diagnostics1[DIAGNOSTICS_SAMPLES];
 static size_t diagnostics_offset = 0;
 #endif
@@ -101,7 +102,7 @@ void apc_on_SoF(void)
 
 	// Avoid exact numbers of half frame lengths, to keep USB frames out of sync with data acquisition
 	// interrupts which are every half frame:
-	const int32_t offset_target = SAMPLES_PER_FRAME * 3 >> 2;
+	const int32_t offset_target = USB_SAMPLES_PER_FRAME * 3 >> 2;
 	int32_t offset_error = (uint32_t) dma_offset - offset_target;
 
 	// If offset_error is positive, USB is gaining on us, and we need to increase the sample
@@ -197,7 +198,7 @@ static uint32_t get_dma_offset(void)
 	// Actually we want the number of 16 bit values, so halve it:
 	bndt >>= 1;
 	// Calculate the how far we are through the frame in data samples:
-	return SAMPLES_PER_FRAME - bndt;
+	return USB_SAMPLES_PER_FRAME - bndt;
 }
 
 #pragma GCC pop_options

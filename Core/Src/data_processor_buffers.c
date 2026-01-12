@@ -21,7 +21,7 @@
  */
 
 #include <stdatomic.h>
-#include <data_processor_buffers.h>
+#include "data_processor_buffers.h"
 #include "trigger.h"
 #include "main.h"
 #include "leds.h"
@@ -42,8 +42,6 @@
 							// 6 for STM32U535, up to 76 for STMU595.
 							// 70 x 16K => 1146880 samples, @384kHz => 2.99s
 							// 12 is about 0.5s.
-
-#define BUFFERS_PER_SECOND (SAMPLING_RATE / DATA_BUFFER_ENTRIES)
 
 #define BUFFER_DELTA 4		// The number of buffers margin we allow in calculations to avoid risk
 							// of reading from a buffer that is being overwritten.
@@ -101,28 +99,22 @@ static int32_t s_unwrapped_filled_buffer_counter = 0;
 static int32_t s_buffer_fifo[BUFFER_FIFO_LENGTH];
 static volatile size_t s_buffer_fifo_next_read = 0, s_buffer_fifo_next_write = 0, s_buffer_fifo_count = 0;
 
-#if 0
-/**
- *  The FIFO of sequence metadata corresponding to the sequences above.
- */
-#define METADATA_FIFO_LENGTH (20)
-static int32_t s_metadata_fifo[METADATA_FIFO_LENGTH];
-static size_t s_metadata_fifo_next_read = 0, s_metadata_fifo_next_write = 0, s_metadata_fifo_count = 0;
-#endif
-
 static bool s_is_triggered = false;
 static int32_t s_trigger_unwrapped_buffer_count = 0;	// The buffer count at the moment of being triggered.
 static int32_t s_final_unwrapped_buffer_for_trigger = 0;		// While we are triggered, continue writing buffers up to this value.
 static data_processor_mode_t s_mode = DATA_PROCESSOR_TRIGGERED;
 
+static int s_buffers_per_second = 0;
+
 static void data_processor_buffers_on_trigger(void);
 
 void data_processor_buffers_init(void)
 {
-	data_processor_buffers_reset(DATA_PROCESSOR_TRIGGERED);
+	// Dummy value for samples_per_second will be set properly when we enter a specific mode:
+	data_processor_buffers_reset(DATA_PROCESSOR_TRIGGERED, 0);
 }
 
-void data_processor_buffers_reset(data_processor_mode_t mode)
+void data_processor_buffers_reset(data_processor_mode_t mode, int samples_per_second)
 {
 	s_mode = mode;
 	s_active_buffer_index = 0;
@@ -132,11 +124,11 @@ void data_processor_buffers_reset(data_processor_mode_t mode)
 
 	s_unwrapped_filled_buffer_counter = 0;
 	s_buffer_fifo_next_read = s_buffer_fifo_next_write = s_buffer_fifo_count = 0;
-#if 0
-	s_metadata_fifo_next_read = s_metadata_fifo_next_write = s_metadata_fifo_count = 0;
-#endif
 	s_is_triggered = false;
 	s_trigger_unwrapped_buffer_count = s_final_unwrapped_buffer_for_trigger = 0;
+
+	s_buffers_per_second = samples_per_second / DATA_BUFFER_ENTRIES;
+
 
 	// No need to initialize_buffers to zero as .bss data is zeroed on startup.
 	// And in any case, we will never read from a buffer before it has been
@@ -199,7 +191,7 @@ static bool buffer_fifo_sniff(int32_t* unwrapped_buffer_index) {
  * This function is called in interrupt context when ADC/DMA has read a new half frame of data
  * from input. We add the data into the buffers managed by this module.
  */
-void data_processor_buffers(const sample_type_t *pDMABuffer, int dma_buffer_offset)
+void data_processor_buffers(const sample_type_t *pDMABuffer, int dma_buffer_offset, int count)
 {
 	// TODO consider replacing the following with CMSIS vector operations, or writing our own composite one.
 
@@ -208,7 +200,7 @@ void data_processor_buffers(const sample_type_t *pDMABuffer, int dma_buffer_offs
 
 	// We could improve this to avoid the extra intermediate buffer. Rainy day stuff.
 
-	int samples_remaining = HALF_SAMPLES_PER_FRAME;
+	int samples_remaining = count;
 	int free_entries = DATA_BUFFER_ENTRIES - s_active_buffer_entry_count;
 	int samples_to_copy = free_entries < samples_remaining ? free_entries : samples_remaining;
 	sample_type_t *pTargetDest = s_active_buffer_ptr + s_active_buffer_entry_count;
@@ -370,7 +362,8 @@ static void data_processor_buffers_on_trigger(void) {
 		 * last buffer count.
 		 */
 
-		s_final_unwrapped_buffer_for_trigger = s_unwrapped_filled_buffer_counter + BUFFERS_PER_SECOND * settings_get()->min_sampling_time_s;
+		s_final_unwrapped_buffer_for_trigger =
+				s_unwrapped_filled_buffer_counter + s_buffers_per_second * settings_get()->min_sampling_time_s;
 	}
 	else {
 
@@ -384,12 +377,12 @@ static void data_processor_buffers_on_trigger(void) {
 
 		// How much history is available that we can use for the pretrigger?
 		uint32_t unexpired_buffers_available = MIN(NUM_BUFFERS - BUFFER_DELTA, s_unwrapped_filled_buffer_counter);
-		uint32_t pretrigger_buffer_count = MIN(BUFFERS_PER_SECOND * settings_get()->pretrigger_time_s, unexpired_buffers_available);
+		uint32_t pretrigger_buffer_count = MIN(s_buffers_per_second * settings_get()->pretrigger_time_s, unexpired_buffers_available);
 
 		// Calculate the start and end unwrapped buffer count for this trigger. Note that it can be extended
 		// later by a retrigger.
 		uint32_t initial_buffer_count = s_unwrapped_filled_buffer_counter - pretrigger_buffer_count;
-		uint32_t final_buffer_count = s_unwrapped_filled_buffer_counter + BUFFERS_PER_SECOND * settings_get()->min_sampling_time_s;
+		uint32_t final_buffer_count = s_unwrapped_filled_buffer_counter + s_buffers_per_second * settings_get()->min_sampling_time_s;
 
 		// Signal that this is the start of a triggered sequence:
 		buffer_fifo_put(BUFFERFIFO_START_SEQUENCE);

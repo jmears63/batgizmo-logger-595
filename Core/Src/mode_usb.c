@@ -115,7 +115,7 @@ static void open_usb_mode(void)
 	data_acquisition_set_processor(data_processor_uac);
 
 	// Starting acquiring data:
-	streaming_start();
+	streaming_start(USB_SAMPLING_RATE_INDEX);
 	data_acquisition_enable_capture(true);
 	// Enable auto phase control to keep the sampling rate in sync with the USB SoF:
 	apc_start();
