@@ -1,4 +1,6 @@
 Version     Date            Description
 
+							Enabled support for exFAT.
+							
 1.1.0       2026-01-12      Added support for different sampling rates in logger mode.
 							(USB/UAC mode sampling rate remains fixed at 384kHz.)
