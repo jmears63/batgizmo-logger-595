@@ -48,6 +48,7 @@ typedef struct {
 	double longitude, latitude;				// Looking at example data from other detectors, 6 dps seems to be used.
 	float pretrigger_time_s;
 	int logger_sampling_rate_index;
+	bool gated_recording;
 
 	// Some calculated fields:
 	q31_t _trigger_thresholds[MAX_TRIGGER_MATCH_CLAUSES];	// Values for comparison with FFT buckets.
@@ -69,7 +70,7 @@ void settings_init(void);
 const settings_t *settings_get(void);
 bool settings_parse_and_process_json_settings(const char *json_string);
 size_t settings_get_json_settings_string(char *buf, size_t buflen);
-int settings_parse_aSAMPLES_PER_FRAMEnd_normalize_schedule(const char *json, schedule_interval_t intervals[]);
+int settings_parse_and_normalize_schedule(const char *json, schedule_interval_t intervals[]);
 int settings_get_logger_sampling_rate(void);
 
 #endif /* INC_SETTINGS_H_ */

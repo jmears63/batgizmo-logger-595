@@ -37,8 +37,13 @@ void data_processor_buffers(const sample_type_t *, int buffer_offset, int count)
 
 // We will write to SD in exact chunks of 32 KB, intened to align with blocks and sectors in the SD card
 // file system, and should therefore be efficient to write:
-#define DATA_BUFFER_ENTRIES (32768 / sizeof(sample_type_t))
+/// #define DATA_BUFFER_ENTRIES (32768 / sizeof(sample_type_t))
+// 64K chunks get written to exFAT about 20% faster than 32K chunks.
+// At 336 kHz sampling rate, each 64K chunk represents about 0.2 s, which is then the resolution of the
+// pretrigger timing etc.
+#define DATA_BUFFER_ENTRIES ((32768 * 2) / sizeof(sample_type_t))
 
 bool dataprocessor_buffers_get_next(sample_type_t **buffer);
+void data_processor_buffers_on_recording_complete(int main_tick_count);
 
 #endif // MY_DATA_PROCESSOR_BUFFERS_H

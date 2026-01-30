@@ -58,7 +58,7 @@ extern "C" {
 
 #include "settings.h"
 
-#define FIRMWARE_VERSION "1.1.0"	// Semantic versioning.
+#define FIRMWARE_VERSION "1.2.0"	// Semantic versioning.
 
 /*
  * When code or data access needs to be fast and deterministic, use these

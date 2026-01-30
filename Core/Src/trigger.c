@@ -147,6 +147,7 @@ static bool check_each_window(volatile const q15_t *pRawData, int count)
 		// triggered = triggered || check_for_trigger(fft_squared_modulus, g_triggered ? NULL : g_trigger_matches);
 		triggered = triggered || check_for_trigger(fft_squared_modulus, NULL);
 	}
+
 	return triggered;
 }
 

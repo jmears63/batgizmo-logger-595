@@ -53,6 +53,7 @@ static settings_t s_settings = {
 		longitude: 0,
 		latitude: 0,
 		logger_sampling_rate_index: 8,		// Sampling rate as multiples of 48 kHz: 5:240, 6:288, 7: 336, 8:384, 9:432: 10:480, 11:528
+		gated_recording: false,		// Will we write data to SD at the same time as acquiring it?
 
 		_trigger_thresholds: {0},
 		_trigger_flags: {false},
@@ -207,14 +208,14 @@ bool settings_parse_and_process_json_settings(const char *json)
 					token = tokens[++i];
 					float float_value;
 					if (json_get_float(json, &token, &float_value))
-						s_settings.max_sampling_time_s = clip_to_float_range(float_value, 0.1, 120);
+						s_settings.max_sampling_time_s = clip_to_float_range(float_value, 0.5, 120);
 				}
 				else if (json_eq_string(json, &token, "min_sampling_time_s")) {
 					// The value is the next token:
 					token = tokens[++i];
 					float float_value;
 					if (json_get_float(json, &token, &float_value))
-						s_settings.min_sampling_time_s = clip_to_float_range(float_value, 0.1, 120);
+						s_settings.min_sampling_time_s = clip_to_float_range(float_value, 0.5, 120);
 				}
 				else if (json_eq_string(json, &token, "pretrigger_time_s")) {
 									// The value is the next token:
@@ -292,6 +293,13 @@ bool settings_parse_and_process_json_settings(const char *json)
 					if (json_get_integer(json, &token, &int_value))
 						s_settings.logger_sampling_rate_index = clip_to_int_range(int_value,
 								SETTINGS_MIN_SAMPLING_RATE_INDEX, SETTINGS_MAX_SAMPLING_RATE_INDEX);
+				}
+				else if (json_eq_string(json, &token, "gated_recording")) {
+					// The value is the next token:
+					token = tokens[++i];
+					bool bool_value;
+					if (json_get_bool(json, &token, &bool_value))
+						s_settings.gated_recording  = bool_value;
 				}
 				else {
 					// Intentionally ignore unknown tokens to allow for compatibility when we add new tokens.
@@ -406,7 +414,8 @@ size_t settings_get_json_settings_string(char *buf, size_t buflen)
 			"  \"trigger\":\"%s\",\n"			\
 			"  \"trigger_thresholds\":\"%s\",\n"		\
 			"  \"disable_usb_msc\":%s,\n"				\
-			"  \"logger_sampling_rate_index\":%d,\n"				\
+			"  \"logger_sampling_rate_index\":%d,\n"	\
+			"  \"gated_recording\":%s\n"				\
 			"}\n",
 			s_settings._firmware_version,
 			s_settings.max_sampling_time_s,
@@ -419,8 +428,9 @@ size_t settings_get_json_settings_string(char *buf, size_t buflen)
 			s_settings.trigger_string,
 			s_settings.trigger_thresholds_string,
 			s_settings.disable_usb_msc ? "true" : "false",
-			s_settings.logger_sampling_rate_index
-			);
+			s_settings.logger_sampling_rate_index,
+			s_settings.gated_recording ? "true" : "false"
+		);
 
 	return strlen(buf);
 }

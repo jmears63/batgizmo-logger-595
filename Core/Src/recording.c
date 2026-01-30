@@ -32,10 +32,6 @@
 
 #define BLINK_LEDS 1
 
-// When recording data we access storage in "low noise" mode, ie 1 bits, as quality is more
-// important than speed:
-#define STORAGE_MODE STORAGE_LOW_NOISE
-
 
 static FX_FILE s_fx_file;
 
@@ -77,6 +73,8 @@ void recording_init(void)
 	s_recording_first = false;
 	s_recording_primed = false;
 }
+
+#define STORAGE_MODE (settings_get()->gated_recording ? STORAGE_FAST : STORAGE_LOW_NOISE)
 
 void recording_open(int sampling_rate)
 {
@@ -139,7 +137,8 @@ void recording_prime(void)
 	s_fx_pMedium = storage_mount(STORAGE_MODE);	// ~ 100+250 ms, or 100+100ms with STORAGE_NORMAL.
 	if (s_fx_pMedium) {
 		// ~300 ms:
-		s_fx_pFile = storage_open_wav_file(s_fx_pMedium, &s_fx_file, s_sampling_rate, "(primed)");
+		s_fx_pFile =
+(s_fx_pMedium, &s_fx_file, s_sampling_rate, "(primed)");
 		s_max_samples_per_file = settings_get()->max_sampling_time_s * s_sampling_rate;
 		s_file_samples_written = 0;
 
@@ -254,6 +253,10 @@ void recording_main_processing(int main_tick_count)
 			if (should_close_file) {
 				// Close the file, standing by for the next one.
 				recording_stop(true);
+
+				// Signal back to the buffer layer that we have now
+				// written all the data:
+				data_processor_buffers_on_recording_complete(main_tick_count);
 			}
 			// leds_set(led_red, false);
 
@@ -263,23 +266,27 @@ void recording_main_processing(int main_tick_count)
 					recording_start();
 				}
 
-				// Do we need to start a new data file?
-				if (s_file_samples_written >= s_max_samples_per_file) {
-#if BLINK_LEDS
-					leds_set(LEDS_GREEN, true);
-#endif
-					// Close the wav file and open a new one:
-					if (s_fx_pFile) {
-						storage_close_wav_file(s_fx_pMedium, s_fx_pFile);
-						s_fx_pFile = NULL;
+				// In non gated recording mode, impose the maximum file length. In gated mode, the
+				// the maximum file is determined by the memory buffer size.
+				if (!settings_get()->gated_recording) {
+					// Do we need to start a new data file?
+					if (s_file_samples_written >= s_max_samples_per_file) {
+	#if BLINK_LEDS
+						leds_set(LEDS_GREEN, true);
+	#endif
+						// Close the wav file and open a new one:
+						if (s_fx_pFile) {
+							storage_close_wav_file(s_fx_pMedium, s_fx_pFile);
+							s_fx_pFile = NULL;
+						}
+
+						s_fx_pFile = storage_open_wav_file(s_fx_pMedium, &s_fx_file, s_sampling_rate, "continued");
+
+						s_file_samples_written = 0;
+	#if BLINK_LEDS
+						leds_set(LEDS_GREEN, false);
+	#endif
 					}
-
-					s_fx_pFile = storage_open_wav_file(s_fx_pMedium, &s_fx_file, s_sampling_rate, "continued");
-
-					s_file_samples_written = 0;
-#if BLINK_LEDS
-					leds_set(LEDS_GREEN, false);
-#endif
 				}
 
 				if (s_fx_pFile) {

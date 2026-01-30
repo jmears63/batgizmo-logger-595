@@ -38,12 +38,14 @@
  * all the other data used by this firmware.
  */
 
-#define NUM_BUFFERS 74		// Maximize this to maximize our ability to pretrigger. Must be > 2.
+///#define NUM_BUFFERS 74		// Maximize this to maximize our ability to pretrigger. Must be > 2.
 							// 6 for STM32U535, up to 76 for STMU595.
 							// 70 x 16K => 1146880 samples, @384kHz => 2.99s
 							// 12 is about 0.5s.
 
-#define BUFFER_DELTA 4		// The number of buffers margin we allow in calculations to avoid risk
+#define NUM_BUFFERS 37		// For 64K chunk size.
+
+#define BUFFER_DELTA 2		// The number of buffers margin we allow in calculations to avoid risk
 							// of reading from a buffer that is being overwritten.
 							// Must be less than NUM_BUFFERS.
 
@@ -51,10 +53,11 @@
 #error BUFFER_DELTA must be less than NUM_BUFFERS
 #endif
 
-#define MAXIMUM_READ_LEAD 24	// We defer yielding values to consumers of the FIFO to read until they are
+///#define MAXIMUM_READ_LEAD 24	// We defer yielding values to consumers of the FIFO to read until they are
 								// close to be overwritten by writes.
 								// This value approximates to 1s, allowing time for the FileX/SD
 								// to reopen the data file without data expiring.
+#define MAXIMUM_READ_LEAD 12	// For 64K chunk size.
 
 // We will rely on C's memory layout of the following, with the last index changing most
 // rapidly. In other other words, &s_buffer_additional[NUM_BUFFERS][s_currently_writing_index] points to
@@ -97,16 +100,20 @@ static int32_t s_unwrapped_filled_buffer_counter = 0;
  */
 #define BUFFER_FIFO_LENGTH (NUM_BUFFERS * 5)
 static int32_t s_buffer_fifo[BUFFER_FIFO_LENGTH];
-static volatile size_t s_buffer_fifo_next_read = 0, s_buffer_fifo_next_write = 0, s_buffer_fifo_count = 0;
+static volatile size_t s_buffer_fifo_next_read = 0, s_buffer_fifo_next_write = 0;
+static volatile size_t s_buffer_fifo_count = 0;	 // Number of entries in the buffer FIFO include special values.
 
 static bool s_is_triggered = false;
-static int32_t s_trigger_unwrapped_buffer_count = 0;	// The buffer count at the moment of being triggered.
-static int32_t s_final_unwrapped_buffer_for_trigger = 0;		// While we are triggered, continue writing buffers up to this value.
+static int32_t s_trigger_unwrapped_buffer_count = 0;		// The buffer count at the moment of being triggered.
+static int32_t s_final_unwrapped_buffer_for_trigger = 0;	// While we are triggered, continue writing buffers up to this value.
 static data_processor_mode_t s_mode = DATA_PROCESSOR_TRIGGERED;
+static volatile bool s_is_gated = false;
+static volatile int s_gate_released_ticks = 0;
+static volatile int s_trigger_count = 0;	// For debugging.
 
 static int s_buffers_per_second = 0;
 
-static void data_processor_buffers_on_trigger(void);
+static void data_processor_buffers_on_trigger(int main_tick_count);
 
 void data_processor_buffers_init(void)
 {
@@ -121,6 +128,8 @@ void data_processor_buffers_reset(data_processor_mode_t mode, int samples_per_se
 	// s_ready_buffer_count = 0;
 	s_active_buffer_entry_count = 0;
 	s_active_buffer_ptr = &s_buffers[s_active_buffer_index][0];
+	s_is_gated = false;
+	s_gate_released_ticks = 0;
 
 	s_unwrapped_filled_buffer_counter = 0;
 	s_buffer_fifo_next_read = s_buffer_fifo_next_write = s_buffer_fifo_count = 0;
@@ -139,7 +148,7 @@ void data_processor_buffers_fast_main_processing(int main_tick_count)
 {
 	if (g_trigger_triggered) {
 		g_trigger_triggered = false;	// Consume the trigger flag.
-		data_processor_buffers_on_trigger();
+		data_processor_buffers_on_trigger(main_tick_count);
 	}
 }
 
@@ -200,6 +209,15 @@ void data_processor_buffers(const sample_type_t *pDMABuffer, int dma_buffer_offs
 
 	// We could improve this to avoid the extra intermediate buffer. Rainy day stuff.
 
+	bool gated_recording = settings_get()->gated_recording;
+	if (gated_recording) {
+		if (s_is_gated) {
+			// Don't fill buffers when we are paused - the data is being
+			// read and written to file. Just discard it.
+			return;
+		}
+	}
+
 	int samples_remaining = count;
 	int free_entries = DATA_BUFFER_ENTRIES - s_active_buffer_entry_count;
 	int samples_to_copy = free_entries < samples_remaining ? free_entries : samples_remaining;
@@ -225,22 +243,53 @@ void data_processor_buffers(const sample_type_t *pDMABuffer, int dma_buffer_offs
 		if (s_mode == DATA_PROCESSOR_TRIGGERED) {
 			// In triggered mode, populate the fifo subject to trigger logic.
 			if (s_is_triggered) {
-				if (s_unwrapped_filled_buffer_counter <= s_final_unwrapped_buffer_for_trigger) {
-					// Continue pushing buffers to the fifo as long as we are in triggered state:
-					buffer_fifo_put(s_unwrapped_filled_buffer_counter);
+				if (gated_recording) {
+					if (s_unwrapped_filled_buffer_counter > s_final_unwrapped_buffer_for_trigger) {
+						// We've reached the end of the trigger:
+						s_is_triggered = false;
+						// Signal that this is the end of a triggered sequence:
+						buffer_fifo_put(BUFFERFIFO_END_SEQUENCE);
+						// This is the moment to start writing data to SD:
+						s_is_gated = true;
+					}
+					else if (s_buffer_fifo_count >= NUM_BUFFERS + 1) {
+						// The fifo is full, time to write to SD.
+						buffer_fifo_put(BUFFERFIFO_END_SEQUENCE);
+						s_is_gated = true;
+					}
+					else {
+						// Push the buffer to the fifo:
+						buffer_fifo_put(s_unwrapped_filled_buffer_counter);
+					}
 				}
 				else {
-					// We've reached the end of the buffer range to write to file,
-					// so exit from triggered state:
-					s_is_triggered = false;
-					// Signal that this is the end of a triggered sequence:
-					buffer_fifo_put(BUFFERFIFO_END_SEQUENCE);
+					if (s_unwrapped_filled_buffer_counter > s_final_unwrapped_buffer_for_trigger) {
+						// We've reached the end of the trigger:
+						s_is_triggered = false;
+						// Signal that this is the end of a triggered sequence:
+						buffer_fifo_put(BUFFERFIFO_END_SEQUENCE);
+					}
+					else {
+						// Continue pushing buffers to the fifo as long as we are in triggered state:
+						buffer_fifo_put(s_unwrapped_filled_buffer_counter);
+					}
 				}
 			}
 		}
 		else if (s_mode == DATA_PROCESSOR_CONTINUOUS) {
 			// In continuous mode populate the fifo regardless of triggering.
 			buffer_fifo_put(s_unwrapped_filled_buffer_counter);
+
+			if (gated_recording) {
+				// See if all the buffers are filled, allowing for the special START token:
+				if (s_buffer_fifo_count >= NUM_BUFFERS + 1) {
+					// We have filled all the buffers, so set the pause flag
+					// to prevent any new data overwriting the buffers, and signal
+					// the main context code that it can read the data now.
+					buffer_fifo_put(BUFFERFIFO_END_SEQUENCE);
+					s_is_gated = true;
+				}
+			}
 		}
 
 		// Track the total number of numbers filled without wrapping:
@@ -266,27 +315,47 @@ void data_processor_buffers(const sample_type_t *pDMABuffer, int dma_buffer_offs
 }
 
 /**
+ * Function called by the recording layer to signal that it has finished
+ * recording data to SD.
+ */
+void data_processor_buffers_on_recording_complete(int main_tick_count) {
+	s_is_gated = false;
+	s_gate_released_ticks = main_tick_count;
+
+	if (s_mode == DATA_PROCESSOR_CONTINUOUS)
+		buffer_fifo_put(BUFFERFIFO_START_SEQUENCE);
+	else if (s_mode == DATA_PROCESSOR_TRIGGERED) {
+		// Make sure the follow on file is at least the minimum length:
+		int minimum = s_unwrapped_filled_buffer_counter + s_buffers_per_second * settings_get()->min_sampling_time_s;
+		if (s_final_unwrapped_buffer_for_trigger < minimum)
+			s_final_unwrapped_buffer_for_trigger = minimum;
+
+		// If the trigger is still active, start of the next sequence:
+		buffer_fifo_put(BUFFERFIFO_START_SEQUENCE);
+		// The main get loop will pick things up from here.
+	}
+}
+
+/**
  * Call this to get the next buffer to be written to file, if any.
  * The return value is true if we should close the current file.
  * *buffer is set to NULL if no data is available.
  */
 bool dataprocessor_buffers_get_next(sample_type_t **pBuffer) {
 
-	/*
-	 * Sniff the next buffer count.
-	 * If it is a special value, consume and return it.
-	 * If it is within N of the write index catching it up, consume and return it.
-	 * It is is expired already, consume it, discard it, try again.
-	 * Otherwise, buffer is set to NULL.
-	 */
-
 	static bool s_is_new_sequence = false;
 
 	*pBuffer = NULL;
-	int32_t unwrapped_buffer_index = 0;
-	while (buffer_fifo_sniff(&unwrapped_buffer_index)) {
 
-		// There is something in the buffer that can be read, so decide what to do:
+	// If we are not in concurrent_mode mode: do nothing until we are paused:
+	bool gated_recording = settings_get()->gated_recording;
+	if (gated_recording && !s_is_gated) {
+		return false;
+	}
+
+	int32_t unwrapped_buffer_index = 0;
+	// Is there anything in the buffer ready to read?
+	while (buffer_fifo_sniff(&unwrapped_buffer_index)) {
 
 		if (unwrapped_buffer_index == BUFFERFIFO_END_SEQUENCE) {
 			buffer_fifo_get(&unwrapped_buffer_index);	// Consume the value.
@@ -300,7 +369,7 @@ bool dataprocessor_buffers_get_next(sample_type_t **pBuffer) {
 			continue; 	// loop round again to see if there is any actual data ready.
 		}
 
-		// Sanity: if the buffer_count is expired, discard it and try again.
+		// Sanity: if the unwrapped_buffer_index refers to expired data, discard it and try again.
 		// + 1 to exclude the buffer that is currently being written to.
 		if (unwrapped_buffer_index < s_unwrapped_filled_buffer_counter - NUM_BUFFERS + 1) {
 			buffer_fifo_get(&unwrapped_buffer_index);	// Consume the value to discard it.
@@ -331,25 +400,43 @@ bool dataprocessor_buffers_get_next(sample_type_t **pBuffer) {
 		const uint32_t lead = read_buffer_index > write_buffer_index ?
 			read_buffer_index - write_buffer_index : read_buffer_index + NUM_BUFFERS - write_buffer_index;
 
-		// If this is a new trigger, stall at this point until write buffer index is catching up with
-		// the read buffer index. That means that on new triggers, we defer writing to SD, but once
-		// we have started writing data, we continue.
-		if ((!s_is_new_sequence) || (lead < MAXIMUM_READ_LEAD)) {
+		if (gated_recording) {
 			s_is_new_sequence = false;
 			buffer_fifo_get(&unwrapped_buffer_index);	// Consume the value for the caller.
 			*pBuffer = (sample_type_t *) &s_buffers[read_buffer_index];
 			return false;
 		}
 		else {
-			// Nothing ready yet.
-			return false;
+			// If this is a new trigger, stall at this point until write buffer index is catching up with
+			// the read buffer index. That means that on new triggers, we defer writing to SD, but once
+			// we have started writing data, we continue.
+			if ((!s_is_new_sequence) || (lead < MAXIMUM_READ_LEAD)) {
+				s_is_new_sequence = false;
+				buffer_fifo_get(&unwrapped_buffer_index);	// Consume the value for the caller.
+				*pBuffer = (sample_type_t *) &s_buffers[read_buffer_index];
+				return false;
+			}
+			else {
+				// Nothing ready yet.
+				return false;
+			}
 		}
 	}
 
 	return false;
 }
 
-static void data_processor_buffers_on_trigger(void) {
+static void data_processor_buffers_on_trigger(int main_tick_count) {
+
+	const int tick_delta = 10;
+
+	if (s_is_gated || (main_tick_count < s_gate_released_ticks + tick_delta)) {
+		// Ignore triggers while we are writing to SD card, in case they are self
+		// triggers from SD card generated ultrasound. Also for a short period afterwards.
+		return;
+	}
+
+	s_trigger_count++;
 
 #if BLINK_LEDS
 	leds_blink(LEDS_YELLOW);
@@ -359,7 +446,7 @@ static void data_processor_buffers_on_trigger(void) {
 
 		/*
 		 * We are currently triggered, so this is a retrigger. We need to recalculate the
-		 * last buffer count.
+		 * last unwrapped buffer count.
 		 */
 
 		s_final_unwrapped_buffer_for_trigger =

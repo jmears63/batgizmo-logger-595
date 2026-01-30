@@ -27,7 +27,8 @@
 
 #include "mode_manual.h"
 #include "storage.h"
-#include "settings.h"#include "tusb_config.h"
+#include "settings.h"
+#include "tusb_config.h"
 
 #include "gain.h"
 #include "init.h"
