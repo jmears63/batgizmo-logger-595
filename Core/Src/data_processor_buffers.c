@@ -369,15 +369,25 @@ bool dataprocessor_buffers_get_next(sample_type_t **pBuffer) {
 			continue; 	// loop round again to see if there is any actual data ready.
 		}
 
+		// Snapshot ring state so we use a consistent pair (interrupt can complete a buffer
+		// between reads and then unwrapped_counter and active_index would be from different
+		// moments, giving the wrong physical slot and an intermittent discontinuity).
+		int32_t filled_counter;
+		int active_index;
+		__disable_irq();	// Avoid races with the interrupt context.
+		filled_counter = s_unwrapped_filled_buffer_counter;
+		active_index = s_active_buffer_index;
+		__enable_irq();
+
 		// Sanity: if the unwrapped_buffer_index refers to expired data, discard it and try again.
 		// + 1 to exclude the buffer that is currently being written to.
-		if (unwrapped_buffer_index < s_unwrapped_filled_buffer_counter - NUM_BUFFERS + 1) {
+		if (unwrapped_buffer_index < filled_counter - NUM_BUFFERS + 1) {
 			buffer_fifo_get(&unwrapped_buffer_index);	// Consume the value to discard it.
 			continue;
 		}
 
 		// Sanity: if the buffer_count is in the future, discard it and try again:
-		if (unwrapped_buffer_index >= s_unwrapped_filled_buffer_counter) {
+		if (unwrapped_buffer_index >= filled_counter) {
 			buffer_fifo_get(&unwrapped_buffer_index);	// Consume the value to discard it.
 			continue;
 		}
@@ -389,14 +399,14 @@ bool dataprocessor_buffers_get_next(sample_type_t **pBuffer) {
 		 */
 
 		// Figure out the buffer index corresponding to the wrapped buffer index:
-		int32_t read_buffer_index = (unwrapped_buffer_index - s_unwrapped_filled_buffer_counter) + (s_active_buffer_index - 1);
+		int32_t read_buffer_index = (unwrapped_buffer_index - filled_counter) + (active_index - 1);
 		if (read_buffer_index < 0)
 			read_buffer_index += NUM_BUFFERS;
 		if (read_buffer_index >= NUM_BUFFERS)
 			read_buffer_index -= NUM_BUFFERS;
 
 		// Calculate the distance by which reading is leading writing in the buffer:
-		const uint32_t write_buffer_index = s_active_buffer_index;
+		const uint32_t write_buffer_index = (uint32_t)active_index;
 		const uint32_t lead = read_buffer_index > write_buffer_index ?
 			read_buffer_index - write_buffer_index : read_buffer_index + NUM_BUFFERS - write_buffer_index;
 
