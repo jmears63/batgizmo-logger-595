@@ -54,6 +54,8 @@ extern "C" {
 
 /* USER CODE BEGIN Includes */
 
+#include <time.h>
+
 /* USER CODE END Includes */
 
 extern RTC_HandleTypeDef hrtc;
@@ -65,6 +67,25 @@ extern RTC_HandleTypeDef hrtc;
 void MX_RTC_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+
+/**
+ * Stops the RTC peripheral and turns off the LSE (32.768 kHz) to reduce pickup in audio.
+ * Call from auto mode open. Time is continued in software using HAL_GetTick() from the
+ * RTC epoch captured here.
+ */
+void rtc_enter_low_noise_mode(void);
+
+/**
+ * Re-enables LSE, re-inits the RTC, and sets calendar time from the tick-based estimate.
+ * Call from auto mode close.
+ */
+void rtc_exit_low_noise_mode(void);
+
+bool rtc_is_low_noise_mode(void);
+
+bool rtc_get_effective_time(RTC_TimeTypeDef *t, RTC_DateTypeDef *d);
+
+time_t rtc_get_effective_epoch_time(struct tm *now_out);
 
 /* USER CODE END Prototypes */
 

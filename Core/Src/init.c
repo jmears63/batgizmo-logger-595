@@ -42,6 +42,11 @@
 
 void init_get_datetime_from_sd(FX_MEDIA *pMedium)
 {
+	/* Applying a new time needs the RTC peripheral; restore it if auto mode had LSE off. */
+	if (rtc_is_low_noise_mode()) {
+		rtc_exit_low_noise_mode();
+	}
+
 	char buf[32];
 	FX_FILE file;
 	ULONG actual_len = 0;

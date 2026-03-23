@@ -113,6 +113,11 @@ static void close_auto_mode(void)
 {
 	s_main_processing_enabled = false;
 
+	/* If the mode switch happens while recording, exit_active() may not run — restore LSE/RTC. */
+	if (rtc_is_low_noise_mode()) {
+		rtc_exit_low_noise_mode();
+	}
+
 	// Switch to LDO. This increases power current draw and allegedly reduces
 	// electrical noise, though I don't think any difference is evident.
 	HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);			// PWR_SMPS_SUPPLY or PWR_LDO_SUPPLY.
@@ -373,33 +378,11 @@ static int realize_intervals(schedule_interval_t raw_intervals[], int raw_interv
 }
 
 /**
- * Get the current time from the RTC, populating now with the broken down time
- * and returning the unix epoc time.
+ * Get the current time (RTC, or tick-based estimate while LSE is off in auto mode).
  */
 static time_t get_time_now(struct tm *now)
 {
-	RTC_TimeTypeDef t;
-	RTC_DateTypeDef d;
-
-	memset(&t, 0, sizeof(t));
-	memset(&d, 0, sizeof(d));
-	int rc = HAL_RTC_GetTime(&hrtc, &t, RTC_FORMAT_BIN);
-	// Why would this fail? Ignoring the possibility for now.
-	(void) rc;
-
-	// We *have* to call GetDate, otherwise the time is stuck. Duh.
-	HAL_RTC_GetDate(&hrtc, &d, RTC_FORMAT_BIN);
-	(void) d;
-
-	now->tm_sec = t.Seconds;
-	now->tm_min = t.Minutes;
-	now->tm_hour = t.Hours;
-	now->tm_mday = d.Date;			// 1 based.
-	now->tm_mon = d.Month - 1;		// 0 based.
-	now->tm_year = (int) d.Year + 2000;
-	now->tm_isdst = -1;
-
-	return mktime(now);		// Populate tm_wday, tm_yday and tm_isdst.
+	return rtc_get_effective_epoch_time(now);
 }
 
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
@@ -448,6 +431,9 @@ static void enter_standby(time_t alarm_epoch)
 	*/
 
 #if DO_HARDWARE_STANDBY
+	/* RTC+LSE must be running for Alarm A; restore calendar from tick-based time first. */
+	rtc_exit_low_noise_mode();
+
 	// Set an alarm to wake us from standby:
 	set_alarm(alarm_epoch);
 
@@ -486,6 +472,11 @@ static void exit_standby(void)
 
 static void enter_active(void)
 {
+	if (settings_get()->rtc_mute) {
+		/* Stop LSE/RTC during active capture to avoid 32.768 kHz pickup; time from ticks (see rtc.c). */
+		rtc_enter_low_noise_mode();
+	}
+
 	streaming_start(settings_get()->logger_sampling_rate_index);
 	s_streaming_started = true;
 
@@ -505,6 +496,8 @@ static void exit_active(void)
 	recording_close();
 	streaming_stop();
 	s_streaming_started = false;
+
+	rtc_exit_low_noise_mode();
 }
 
 static bool is_in_range(int v, int min, int max)

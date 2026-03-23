@@ -49,6 +49,8 @@ typedef struct {
 	float pretrigger_time_s;
 	int logger_sampling_rate_index;
 	bool gated_recording;
+	/** If true, stop LSE/RTC during active auto-mode capture to reduce 32.768 kHz pickup. */
+	bool rtc_mute;
 
 	// Some calculated fields:
 	q31_t _trigger_thresholds[MAX_TRIGGER_MATCH_CLAUSES];	// Values for comparison with FFT buckets.

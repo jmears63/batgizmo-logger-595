@@ -108,10 +108,7 @@ void storage_set_filex_time(void)
 	RTC_DateTypeDef d;
 	memset(&t, 0, sizeof(t));
 	memset(&d, 0, sizeof(d));
-	bool ok = HAL_RTC_GetTime(&hrtc, &t, RTC_FORMAT_BIN) == HAL_OK;
-
-	// We *have* to call GetDate, otherwise the time is stuck. Duh.
-	ok = (HAL_RTC_GetDate(&hrtc, &d, RTC_FORMAT_BIN) == HAL_OK) && ok;
+	bool ok = rtc_get_effective_time(&t, &d);
 
 	if (ok) {
 		fx_system_time_set(t.Hours, t.Minutes, t.Seconds);
@@ -344,9 +341,7 @@ static void get_base_name(char *buf, size_t buflen) {
 	RTC_DateTypeDef d;
 	memset(&t, 0, sizeof(t));
 	memset(&d, 0, sizeof(d));
-	bool ok = HAL_RTC_GetTime(&hrtc, &t, RTC_FORMAT_BIN) == HAL_OK;
-	// We *have* to call GetDate, otherwise the time is stuck. Duh.
-	ok = (HAL_RTC_GetDate(&hrtc, &d, RTC_FORMAT_BIN) == HAL_OK) && ok;
+	bool ok = rtc_get_effective_time(&t, &d);
 	if (ok) {
 		snprintf(buf, buflen, "%04d%02d%02d_%02d%02d%02d",
 				d.Year + 2000, d.Month, d.Date,
@@ -363,9 +358,7 @@ static void note_guano_data(int sampling_rate, const char *trigger)
 	s_guano_data.trigger[TRIGGER_LEN - 1] = '\0';
 	memset(&s_guano_data.time, 0, sizeof(s_guano_data.time));
 	memset(&s_guano_data.date, 0, sizeof(s_guano_data.date));
-	HAL_RTC_GetTime(&hrtc, &s_guano_data.time, RTC_FORMAT_BIN);
-	// We *have* to call GetDate, otherwise the time is stuck. Duh.
-	HAL_RTC_GetDate(&hrtc, &s_guano_data.date, RTC_FORMAT_BIN);
+	(void)rtc_get_effective_time(&s_guano_data.time, &s_guano_data.date);
 
 	const settings_t *pSettings = settings_get();
 	s_guano_data.location_present = pSettings->_location_present;

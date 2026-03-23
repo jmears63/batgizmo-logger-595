@@ -1,5 +1,7 @@
 Version     Date            Description
 
+							Added a setting to disable the RTC during auto logging to remove the annoying line at 32.768kHz.
+
 1.2.1		2026-03-12		Fixed raced condition when buffering data.
 
 1.2.0		2026-01-30		Enabled support for exFAT.

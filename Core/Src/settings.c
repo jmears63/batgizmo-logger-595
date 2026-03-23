@@ -54,6 +54,7 @@ static settings_t s_settings = {
 		latitude: 0,
 		logger_sampling_rate_index: 8,		// Sampling rate as multiples of 48 kHz: 5:240, 6:288, 7: 336, 8:384, 9:432: 10:480, 11:528
 		gated_recording: false,		// Will we write data to SD at the same time as acquiring it?
+		rtc_mute: false,
 
 		_trigger_thresholds: {0},
 		_trigger_flags: {false},
@@ -301,6 +302,12 @@ bool settings_parse_and_process_json_settings(const char *json)
 					if (json_get_bool(json, &token, &bool_value))
 						s_settings.gated_recording  = bool_value;
 				}
+				else if (json_eq_string(json, &token, "rtc_mute")) {
+					token = tokens[++i];
+					bool bool_value;
+					if (json_get_bool(json, &token, &bool_value))
+						s_settings.rtc_mute = bool_value;
+				}
 				else {
 					// Intentionally ignore unknown tokens to allow for compatibility when we add new tokens.
 				}
@@ -415,7 +422,8 @@ size_t settings_get_json_settings_string(char *buf, size_t buflen)
 			"  \"trigger_thresholds\":\"%s\",\n"		\
 			"  \"disable_usb_msc\":%s,\n"				\
 			"  \"logger_sampling_rate_index\":%d,\n"	\
-			"  \"gated_recording\":%s\n"				\
+			"  \"gated_recording\":%s,\n"				\
+			"  \"rtc_mute\":%s\n"				\
 			"}\n",
 			s_settings._firmware_version,
 			s_settings.max_sampling_time_s,
@@ -429,7 +437,8 @@ size_t settings_get_json_settings_string(char *buf, size_t buflen)
 			s_settings.trigger_thresholds_string,
 			s_settings.disable_usb_msc ? "true" : "false",
 			s_settings.logger_sampling_rate_index,
-			s_settings.gated_recording ? "true" : "false"
+			s_settings.gated_recording ? "true" : "false",
+			s_settings.rtc_mute ? "true" : "false"
 		);
 
 	return strlen(buf);
