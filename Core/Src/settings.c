@@ -34,7 +34,7 @@
 #include "jsmn.h"
 
 static void process_trigger_flags(settings_t *ps);
-static void process_trigger_thresholds(settings_t *ps);
+static void process_trigger_profile(settings_t *ps);
 
 // Default values to use when there are no settings readable from SD card:
 static settings_t s_settings = {
@@ -47,8 +47,9 @@ static settings_t s_settings = {
 		sensitivity_disable: false,
 		write_settings_to_sd: 1,
 		trigger_max_count: 16,
+		trigger_headroom: 12,
 		trigger_string: 			"*  x  x  x  x  x  x  x  x  x  *  *  *  *  *  *",
-		trigger_thresholds_string: 	"67 67 51 51 47 47 45 43 42 42 42 36 36 36 36 36",
+		trigger_profile_string: 	"67 67 51 51 47 47 45 43 42 42 42 36 36 36 36 36",
 		disable_usb_msc: false,		// TODO: true is incompatible with the build with ENABLE_USB_MSC defined as 0.
 		longitude: 0,
 		latitude: 0,
@@ -253,15 +254,22 @@ bool settings_parse_and_process_json_settings(const char *json)
 					if (json_get_integer(json, &token, &int_value))
 						s_settings.trigger_max_count = clip_to_int_range(int_value, 1, MAX_TRIGGER_MATCH_CLAUSES);
 				}
+				else if (json_eq_string(json, &token, "trigger_headroom")) {
+					// The value is the next token:
+					token = tokens[++i];
+					int int_value;
+					if (json_get_integer(json, &token, &int_value))
+						s_settings.trigger_headroom = clip_to_int_range(int_value, 0, 40);
+				}
 				else if (json_eq_string(json, &token, "trigger")) {
 					// The value is the next token:
 					token = tokens[++i];
 					json_get_string(json, &token, s_settings.trigger_string, SETTINGS_TRIGGER_MATCH_LEN);
 				}
-				else if (json_eq_string(json, &token, "trigger_thresholds")) {
+				else if (json_eq_string(json, &token, "trigger_profile")) {
 					// The value is the next token:
 					token = tokens[++i];
-					json_get_string(json, &token, s_settings.trigger_thresholds_string, SETTINGS_TRIGGER_MATCH_LEN);
+					json_get_string(json, &token, s_settings.trigger_profile_string, SETTINGS_TRIGGER_MATCH_LEN);
 				}
 				else if (json_eq_string(json, &token, "disable_usb_msc")) {
 					// The value is the next token:
@@ -317,7 +325,7 @@ bool settings_parse_and_process_json_settings(const char *json)
 	}
 
 	process_trigger_flags(&s_settings);
-	process_trigger_thresholds(&s_settings);
+	process_trigger_profile(&s_settings);
 
 	return true;
 }
@@ -347,7 +355,7 @@ static void process_trigger_flags(settings_t *ps)
 	}
 }
 
-static void process_trigger_thresholds(settings_t *ps)
+static void process_trigger_profile(settings_t *ps)
 {
 /*
 	Parse out the matches string into the form we need to use the trigger.
@@ -362,7 +370,7 @@ static void process_trigger_thresholds(settings_t *ps)
 	const char *ws = " \t\n";
 
 	// We have to work on a copy of the string, as strtok modifies it:
-	strcpy(g_2k_char_buffer, ps->trigger_thresholds_string);
+	strcpy(g_2k_char_buffer, ps->trigger_profile_string);
 	char *token = strtok(g_2k_char_buffer, ws);
 	int tokens_processed = 0;
 	while (token != NULL) {
@@ -374,6 +382,7 @@ static void process_trigger_thresholds(settings_t *ps)
 			else {
 				float db = 0.0;
 				/*int n =*/ sscanf(token, "%f", &db);
+				db += ps->trigger_headroom;
 
 				// TODO limit the value of db to within sane limits that avoid an integer overflow
 				// below.
@@ -418,8 +427,9 @@ size_t settings_get_json_settings_string(char *buf, size_t buflen)
 			"  \"sensitivity_disable\":%s,\n"			\
 			"  \"write_settings_to_sd\":%s,\n"			\
 			"  \"trigger_max_count\":%d,\n"				\
+			"  \"trigger_headroom\":%d,\n"				\
 			"  \"trigger\":\"%s\",\n"			\
-			"  \"trigger_thresholds\":\"%s\",\n"		\
+			"  \"trigger_profile\":\"%s\",\n"		\
 			"  \"disable_usb_msc\":%s,\n"				\
 			"  \"logger_sampling_rate_index\":%d,\n"	\
 			"  \"gated_recording\":%s,\n"				\
@@ -433,8 +443,9 @@ size_t settings_get_json_settings_string(char *buf, size_t buflen)
 			s_settings.sensitivity_disable ? "true" : "false",
 			s_settings.write_settings_to_sd ? "true" : "false",
 			s_settings.trigger_max_count,
+			s_settings.trigger_headroom,
 			s_settings.trigger_string,
-			s_settings.trigger_thresholds_string,
+			s_settings.trigger_profile_string,
 			s_settings.disable_usb_msc ? "true" : "false",
 			s_settings.logger_sampling_rate_index,
 			s_settings.gated_recording ? "true" : "false",

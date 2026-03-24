@@ -6,10 +6,11 @@
   "sensitivity_disable":false,
   "write_settings_to_sd":true,
   "trigger_max_count":10,
-  "trigger":            "*  x  x  x  x  x  x  x  x  x  x  x  x  x  x  x",
-  "trigger_thresholds": "65 60 48 47 50 50 47 42 39 38 37 36 35 34 35 36",
+  "trigger_headroom":12,
+  "trigger":         "*  x  x  x  x  x  x  x  x  x  x  x  x  x  x  x ",
+  "trigger_profile": "65 60 48 47 50 50 47 42 39 38 37 36 35 34 35 36",
   "disable_usb_msc":false,
   "logger_sampling_rate_index":10,
   "gated_recording":false,
-  "rtc_mute":true
+  "rtc_mute":false
 }

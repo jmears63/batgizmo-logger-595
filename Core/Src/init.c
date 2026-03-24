@@ -22,6 +22,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "init.h"
 #include "sdmmc.h"
@@ -66,12 +67,33 @@ void init_get_datetime_from_sd(FX_MEDIA *pMedium)
 	bool ok = (actual_len > 0);
 	if (ok) {
 		// Try to parse out the date and time provided according to yyyy-MM-ddTHH:mm:ss
-		// We'll ignore any trailing data such as time zone.
+		// from the first line of the file.
 		// FAT has no concept of time zone; linux seems to assume that is UTC and adjusts accordingly to BST
 		// in the summer. Therefore, the user needs to set it as UTC. Other OSs may behave differently.
-		// Year in the range 0-99:
-		int count = sscanf(buf, "%*2s%2d-%2d-%2dT%2d:%2d:%2d", &year, &month, &day, &hours, &minutes, &seconds);
+		char *newline = strpbrk(buf, "\r\n");
+		if (newline)
+			*newline = '\0';
+
+		int full_year = 0;
+		int count = sscanf(buf, "%4d-%2d-%2dT%2d:%2d:%2d", &full_year, &month, &day, &hours, &minutes, &seconds);
 		ok = (count == 6);
+		if (ok) {
+			// RTC expects year in range 0..99 corresponding to 2000..2099.
+			if (full_year >= 2000 && full_year <= 2099)
+				year = full_year - 2000;
+			else if (full_year >= 0 && full_year <= 99)
+				year = full_year;
+			else
+				ok = false;
+		}
+
+		if (ok) {
+			ok = ok && (month >= 1 && month <= 12);
+			ok = ok && (day >= 1 && day <= 31);
+			ok = ok && (hours >= 0 && hours <= 23);
+			ok = ok && (minutes >= 0 && minutes <= 59);
+			ok = ok && (seconds >= 0 && seconds <= 59);
+		}
 	}
 
 	if (ok) {

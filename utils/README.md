@@ -7,7 +7,7 @@ It can:
 - compute trigger checks window-by-window using the same 32-sample FFT bucket logic,
 - optionally write the per-window profile to CSV (`-o`),
 - print percentile bucket values (`-p`),
-- print derived `trigger_thresholds` values.
+- print derived `trigger_profile` values.
 
 ## Requirements
 
@@ -32,27 +32,6 @@ python3 -m pip install numpy
 python3 utils/trigger_profile.py [options] <input.wav>
 ```
 
-### Options
-
-- `--settings <path>`  
-  Optional `settings.json` file. Used for:
-  - `sensitivity_range` (gain handling),
-  - `logger_sampling_rate_index` (half-frame sizing),
-  - `trigger`, `trigger_thresholds`, and `trigger_max_count`.
-
-- `-o, --output <path>`  
-  Write per-window profile CSV to this file.  
-  If omitted, no per-window CSV is written.
-
-- `-p, --percentile [value]`  
-  Print aggregate bucket values to stdout at this percentile, and an equivalent line that can be used in settings.json.
-  - `-p` with no value uses `99`.
-  - valid range: `0..100`.
-
-- `--help`  
-  Show help text.  
-  (Note: short `-h` is used for headroom in this tool.)
-
 ## Examples
 
 Using the settings file provided, caculated how many times the audio data provided would have triggered,
@@ -71,7 +50,7 @@ python3 utils/trigger_profile.py input.wav -p 99 --settings samples/settings.jso
 
 Percentile: 99.0
 4713241,1601074,105333,78849,156432,155607,73478,23371,13033,9501,7229,6780,5158,4060,5097,6565
-"trigger_thresholds": "55 50 38 37 40 40 37 32 29 28 27 26 25 24 25 26"
+"trigger_profile": "55 50 38 37 40 40 37 32 29 28 27 26 25 24 25 26"
 Processed 2408470 samples at 480000 Hz, 20070 checked windows, 8 triggered half-frames.
 ```
 
@@ -98,7 +77,8 @@ When `-p` is supplied, stdout prints:
 
 1. `Percentile: <value>`
 2. Comma-separated aggregate bucket values (`bucket_0..bucket_15`)
-3. A JSON-style `trigger_thresholds` string derived from those aggregate values
+3. A JSON-style `trigger_profile` string derived from those aggregate values
+   (firmware adds `trigger_headroom`, default `12` dB, when converting this to thresholds).
 
 ### Stderr
 

@@ -56,8 +56,9 @@ The BatGizmo firmware reads **`settings.json`** from the root of the SD card (sa
 | `sensitivity_range` | integer | `3` | Clipped to **0–4** (`GAIN_MAX_RANGE_INDEX`). Selects analogue gain range / sensitivity step. |
 | `write_settings_to_sd` | boolean | `true` | If `true`, the device may write a copy of settings (or related data) to the card when recording opens, etc. |
 | `trigger_max_count` | integer | `16` | Clipped to **1–16** (`MAX_TRIGGER_MATCH_CLAUSES`). How many trigger clauses / buckets are considered. |
+| `trigger_headroom` | integer | `12` | Clipped to **0..48** dB. Added to each `trigger_profile` bucket value before conversion to internal trigger thresholds. |
 | `trigger` | string | (see sample) | Up to **128** characters. Whitespace-separated tokens, one per frequency bucket: **`x`** = triggering enabled for that bucket, **`*`** = disabled. Extra buckets default to `*`. |
-| `trigger_thresholds` | string | (see sample) | Up to **128** characters. Whitespace-separated values in **dB** per bucket, or **`*`** to ignore a bucket. Values are converted internally for FFT comparison. |
+| `trigger_profile` | string | (see sample) | Up to **128** characters. Whitespace-separated values in **dB** per bucket, or **`*`** to ignore a bucket. Values are converted internally for FFT comparison. |
 | `location` | string | *(absent)* | Optional. Two numbers: **latitude** and **longitude**, separated by whitespace (e.g. `"51.5 -0.12"`). Embedded in metadata (e.g. GUANO) when valid. |
 | `logger_sampling_rate_index` | integer | `8` | Clipped to **5–11**. Logger sample rate is **`index × 48 kHz`** (e.g. `8` → 384 kHz). |
 | `gated_recording` | boolean | `false` | If `true`, acquisition is **gated**: while data is being written to SD, new samples are not buffered (reduces concurrent load; different buffering path). |

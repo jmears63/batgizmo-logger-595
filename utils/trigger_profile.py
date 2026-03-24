@@ -37,8 +37,9 @@ DEFAULT_SETTINGS = {
     "sensitivity_disable": False,
     "write_settings_to_sd": True,
     "trigger_max_count": 16,
+    "trigger_headroom": 12,
     "trigger": "*  x  x  x  x  x  x  x  x  x  *  *  *  *  *  *",
-    "trigger_thresholds": "67 67 51 51 47 47 45 43 42 42 42 36 36 36 36 36",
+    "trigger_profile": "67 67 51 51 47 47 45 43 42 42 42 36 36 36 36 36",
     "disable_usb_msc": False,
     "location": None,
     "logger_sampling_rate_index": 8,
@@ -107,10 +108,11 @@ def arm_mult_q15(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 @dataclass
 class TriggerSettings:
     trigger_max_count: int
+    trigger_headroom: int
     sensitivity_range: int
     logger_sampling_rate_index: int
     trigger_flags: list[bool]
-    trigger_thresholds_q31: list[int]
+    trigger_profile_q31: list[int]
 
 
 def clip_int(value: int, lo: int, hi: int) -> int:
@@ -132,7 +134,7 @@ def parse_trigger_flags(trigger_str: str) -> list[bool]:
     return flags
 
 
-def parse_trigger_thresholds(threshold_str: str) -> list[int]:
+def parse_trigger_profile(threshold_str: str, trigger_headroom: int) -> list[int]:
     tokens = threshold_str.split()
     out: list[int] = []
     for i in range(FFT_BUCKET_COUNT):
@@ -145,7 +147,7 @@ def parse_trigger_thresholds(threshold_str: str) -> list[int]:
             out.append(SETTINGS_IGNORE_TRIGGER_VALUE)
             continue
 
-        db = float(t)
+        db = float(t) + trigger_headroom
         factor = 10.0 ** (db / 20.0)
         reference = 0x0004
         result = int(factor * reference + 0.5)
@@ -182,6 +184,7 @@ def build_settings(settings_path: Path | None) -> TriggerSettings:
 
     # Mirror clip behaviour in settings.c where relevant.
     raw["trigger_max_count"] = clip_int(int(raw["trigger_max_count"]), 1, FFT_BUCKET_COUNT)
+    raw["trigger_headroom"] = clip_int(int(raw["trigger_headroom"]), -48, 48)
     raw["sensitivity_range"] = clip_int(int(raw["sensitivity_range"]), 0, GAIN_MAX_RANGE_INDEX)
     raw["logger_sampling_rate_index"] = clip_int(int(raw["logger_sampling_rate_index"]), 5, 11)
     raw["max_sampling_time_s"] = clip_float(float(raw["max_sampling_time_s"]), 0.5, 120.0)
@@ -189,13 +192,14 @@ def build_settings(settings_path: Path | None) -> TriggerSettings:
     raw["pretrigger_time_s"] = clip_float(float(raw["pretrigger_time_s"]), 0.0, 2.0)
 
     flags = parse_trigger_flags(str(raw["trigger"]))
-    thresholds = parse_trigger_thresholds(str(raw["trigger_thresholds"]))
+    thresholds = parse_trigger_profile(str(raw["trigger_profile"]), int(raw["trigger_headroom"]))
     return TriggerSettings(
         trigger_max_count=int(raw["trigger_max_count"]),
+        trigger_headroom=int(raw["trigger_headroom"]),
         sensitivity_range=int(raw["sensitivity_range"]),
         logger_sampling_rate_index=int(raw["logger_sampling_rate_index"]),
         trigger_flags=flags,
-        trigger_thresholds_q31=thresholds,
+        trigger_profile_q31=thresholds,
     )
 
 
@@ -249,7 +253,7 @@ def check_for_trigger(
     matched_indices: list[int] = []
 
     for i in range(FFT_BUCKET_COUNT):
-        threshold = settings.trigger_thresholds_q31[i]
+        threshold = settings.trigger_profile_q31[i]
         if (not settings.trigger_flags[i]) or (threshold == SETTINGS_IGNORE_TRIGGER_VALUE):
             continue
 
@@ -406,10 +410,10 @@ def main() -> int:
 
         print(f"Percentile: {args.percentile}")
         print(",".join([str(int(round(v))) for v in aggregate.tolist()]))
-        trigger_thresholds = " ".join(
+        trigger_profile_values = " ".join(
             [str(bucket_power_to_threshold_db(v)) for v in aggregate.tolist()]
         )
-        print(f'"trigger_thresholds": "{trigger_thresholds}"')
+        print(f'"trigger_profile": "{trigger_profile_values}"')
 
     print(
         (

@@ -42,8 +42,9 @@ typedef struct {
 	bool sensitivity_disable;
 	bool write_settings_to_sd;
 	int trigger_max_count;
+	int trigger_headroom;								// dB added to each trigger_profile value to convert to a threshold.
 	char trigger_string[SETTINGS_TRIGGER_MATCH_LEN];			// Flags that enable/disable triggering per bucket.
-	char trigger_thresholds_string[SETTINGS_TRIGGER_MATCH_LEN];	// Threshold for each bucket to trigger.
+	char trigger_profile_string[SETTINGS_TRIGGER_MATCH_LEN];	// Per bucket values as a basis for trigger thresholds.
 	bool disable_usb_msc;
 	double longitude, latitude;				// Looking at example data from other detectors, 6 dps seems to be used.
 	float pretrigger_time_s;
