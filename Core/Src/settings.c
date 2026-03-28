@@ -419,7 +419,7 @@ size_t settings_get_json_settings_string(char *buf, size_t buflen)
 {
 	snprintf(buf, buflen,
 			"{\n"										\
-			"  \"firmware_version\":%s,\n"				\
+			"  \"firmware_version\":\"%s\",\n"			\
 			"  \"max_sampling_time_s\":%.1f,\n"			\
 			"  \"min_sampling_time_s\":%.1f,\n"			\
 			"  \"pretrigger_time_s\":%.1f,\n"			\
