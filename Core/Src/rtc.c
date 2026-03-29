@@ -323,6 +323,10 @@ bool rtc_is_low_noise_mode(void)
 	return s_low_noise_rtc_mode;
 }
 
+
+/**
+ * Return the wall clock time, ie the time adjusted for both time zone and DST.
+ */
 bool rtc_get_effective_time(RTC_TimeTypeDef *t, RTC_DateTypeDef *d)
 {
 	memset(t, 0, sizeof(*t));
