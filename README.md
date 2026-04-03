@@ -11,22 +11,22 @@ Main features:
   - DMA-driven acquisition pipeline.
   - Precise timing and clock control.
   
-- **USB mode: it functions as a high quality USB microphone
+- **USB mode**: functions as a high quality USB microphone
   - Fully compatible with the free BatGizmo Android App.
   - USB AUC1 compliant.
   - Sampling at 384 kHz with automatic phase locking to the USB host to avoid glitches.
   - Analogue gain can be set via USB, for example, from the BatGizmo App, with a choice of five levels.
 
-- **Automatic logger mode: it functions as a passive logger:
+- **Passive mode**: automatic logger
   - Recording to .wav files on SD card, with a configurable upper file size.
   - Sampling rates in the range 288 to 528 kHz (48 kHz steps) can be configured.
   - Flexible triggering of recording based on a set of thresholds in frequency bands.
-  - Several seconds of recorded data is buffered in SRAM so that nothing is missed:
+  - Several seconds of recorded data is buffered in SRAM:
   	- Pretriggering allows recordings to include the lead up to a trigger.
-  	- Recording need not be interrupted by potentially lengthy SD card operations.
+  	- Allows for data acquisition and SD writing to be alternated, resulting in very low noise.
   - Very efficient power management based on IoT technology includes an extremely low power standby mode, allowing the device to be left in place for passive logging for long intervals.
 
-- **Fully configurable via JSON files on the SD card:
+- **Fully configurable** via JSON files on the SD card:
   - See the samples directory.
 
 ## `settings.json` reference
@@ -50,19 +50,19 @@ The BatGizmo firmware reads **`settings.json`** from the root of the SD card (sa
 
 | Key | Type | Default | Valid range / notes |
 |-----|------|---------|---------------------|
-| `max_sampling_time_s` | number | `5` | Clipped to **0.5–120** seconds. Upper bound on length of a single recording segment (non–gated recording). |
-| `min_sampling_time_s` | number | `2` | Clipped to **0.5–120** seconds. Minimum duration of a triggered recording. |
-| `pretrigger_time_s` | number | `0.5` | Clipped to **0.0–2.0** seconds. How much audio *before* a trigger is kept (buffer permitting). |
-| `sensitivity_range` | integer | `3` | Clipped to **0–4** (`GAIN_MAX_RANGE_INDEX`). Selects analogue gain range / sensitivity step. |
-| `write_settings_to_sd` | boolean | `true` | If `true`, the device may write a copy of settings (or related data) to the card when recording opens, etc. |
-| `trigger_max_count` | integer | `16` | Clipped to **1–16** (`MAX_TRIGGER_MATCH_CLAUSES`). How many trigger clauses / buckets are considered. |
-| `trigger_headroom` | integer | `12` | Clipped to **0..48** dB. Added to each `trigger_profile` bucket value before conversion to internal trigger thresholds. |
-| `trigger` | string | (see sample) | Up to **128** characters. Whitespace-separated tokens, one per frequency bucket: **`x`** = triggering enabled for that bucket, **`*`** = disabled. Extra buckets default to `*`. |
-| `trigger_profile` | string | (see sample) | Up to **128** characters. Whitespace-separated values in **dB** per bucket, or **`*`** to ignore a bucket. Values are converted internally for FFT comparison. |
-| `location` | string | *(absent)* | Optional. Two numbers: **latitude** and **longitude**, separated by whitespace (e.g. `"51.5 -0.12"`). Embedded in metadata (e.g. GUANO) when valid. |
-| `logger_sampling_rate_index` | integer | `8` | Clipped to **5–11**. Logger sample rate is **`index × 48 kHz`** (e.g. `8` → 384 kHz). |
-| `gated_recording` | boolean | `false` | If `true`, acquisition is **gated**: while data is being written to SD, new samples are not buffered (reduces concurrent load; different buffering path). |
-| `rtc_mute` | boolean | `false` | If `true`, in **Auto** mode during an **active** scheduled interval the firmware will **stop the 32.768 kHz LSE / RTC** to avoid the appearance of a line at 32.678 kHz in recordings; wall time is continued using **CPU tick** (`HAL_GetTick`) until the interval ends. **Beware**: If you remove power during auto active mode, the RTC will not be restarted. To avoid this, manually move the switch to USB mode before removing power. |
+| `max_sampling_time_s` | number | `5` | Valid range **0.5–120** seconds. Maximum duration of a single recording segment (non–gated recording, see below). |
+| `min_sampling_time_s` | number | `2` | Valid range **0.5–120** seconds. Minimum duration of a triggered recording, excluding the pretrigger. |
+| `pretrigger_time_s` | number | `0.5` | Valid range **0.0–2.0** seconds. Duration of audio from *before* the trigger that will be included. |
+| `sensitivity_range` | integer | `3` | Valid range **0–4**, corresponding to 0-18 dB in steps of 6 dB. Selects the analogue gain. |
+| `write_settings_to_sd` | boolean | `true` | If `true`, the device will write a copy of settings to the SD card when when a recording session starts to a file named <date>_<time>_settings.json. |
+| `trigger_max_count` | integer | `16` | Valid range **1–16** (`MAX_TRIGGER_MATCH_CLAUSES`). Experimental - do not set.  |
+| `trigger_headroom` | integer | `12` | Valid range **0..48** dB. A single setting than can conveniently be used to control the overall trigger sensitivity. It is added to `trigger_profile` bucket values before use as a trigger thresholds. |
+| `trigger` | string | (see sample) | Up to **128** characters. Whitespace-separated tokens, one per frequency bucket: **`x`** = triggering enabled for that bucket, **`*`** = disabled. There are 16 frequency buckets spanning the range from 0 kHz to the Nyquist frequency.|
+| `trigger_profile` | string | (see sample) | Up to **128** characters. Whitespace-separated values in **dB** per frequency bucket. |
+| `location` | string | n/a | Optional. Two numbers: **latitude** and **longitude**, separated by whitespace (e.g. `"51.5 -0.12"`). Included in GUANO metadata if present. |
+| `logger_sampling_rate_index` | integer | `8` | Valid range **5–11**. Logger sampling rate is **`index × 48 kHz`**, so allows sampling rates of 240-528 kHz. When the detector is used in active mode as a USB microphone this setting is ignored and the sampling rate is 384 kHz |
+| `gated_recording` | boolean | `false` | If `true`, data acquisition is alternated with writing to SD card to achieve lowest noise recordings. In this mode the maximum duration of a recording segment is determined by the MCU cache size. |
+| `rtc_mute` | boolean | `false` | Experimental - do not set. |
 
 ### Example
 
