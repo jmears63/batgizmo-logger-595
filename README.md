@@ -4,8 +4,13 @@ This repo contains the firmware source for the **BatGizmo** bat detector device.
 
 The BatGizmo device is a dual purpose bat detector, functioning as both a USB microphone for real time bat discovery (transects) and as an unattended trigger logging to SD card (passive detection). Both modes were designed as first class features from the ground up - neither is an after thought.
 
-Main features:
+General information can be found in [this blog post](https://twilighttravels.org/2026/04/04/batgizmo-detector-design/).
 
+The [schematic can be found here](https://github.com/jmears63/batgizmo-logger-kicad).
+
+
+Main features:
+ 
 - **Ultrasonic Audio Capture**
   - High-speed ADC sampling from an ultrasonic microphone.
   - DMA-driven acquisition pipeline.
