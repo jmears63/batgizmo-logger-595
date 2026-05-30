@@ -97,3 +97,38 @@ If **`to`** is **earlier** in the day than **`from`** (e.g. `"from":"23:00"`, `"
 ### Example
 
 See [`samples/schedule.json`](samples/schedule.json).
+
+## Install firmware from a `.dfu` file (Linux)
+
+Prebuilt versions of the BatGizmo firmware are available from [the releases listed in github](https://github.com/jmears63/batgizmo-logger-595/releases).
+
+On Linux, use `dfu-util` to transfer firmware to the BatGizmo using USB DFU mode. Similar utilities are available for other operating systems.
+
+1) Find a suitable USB cable to connect the BatGizmo to the computer. Start with the computer switched on and the USB cable plugged into the computer, but the BatGizmo **disconnected** initially.
+
+2) Hold down the DFU button on the BatGizmo, then plug the USB cable into the BatGizmo, taking care to **continue holding down the DFU button throughout**.
+
+3) Release the DFU button. The BatGizmo should now start up in DFU mode, which you can verify by listing USB devices that support DFU. You should see something similar to this:
+
+```bash
+dfu-util --list
+dfu-util 0.11
+
+Copyright 2005-2009 Weston Schmidt, Harald Welte and OpenMoko Inc.
+Copyright 2010-2021 Tormod Volden and Stefan Schmidt
+This program is Free Software and has ABSOLUTELY NO WARRANTY
+Please report bugs to http://sourceforge.net/p/dfu-util/tickets/
+
+Found DFU: [0483:df11] ver=0200, devnum=13, cfg=1, intf=0, path="1-6", alt=2, name="@OTP Memory   /0x0BFA0000/01*512 e", serial="205B396A5242"
+Found DFU: [0483:df11] ver=0200, devnum=13, cfg=1, intf=0, path="1-6", alt=1, name="@Option Bytes   /0x40022040/01*64 e", serial="205B396A5242"
+Found DFU: [0483:df11] ver=0200, devnum=13, cfg=1, intf=0, path="1-6", alt=0, name="@Internal Flash   /0x08000000/512*08Kg", serial="205B396A5242"
+```
+Note the USB device code, which is **0483:df11** in this example.
+
+4) Download firmware to the device, using the device code you just noted, as below. Substitute the name of your actual DFU file.
+
+```bash
+dfu-util -d 0483:df11 -a 0 -D batgizmo-x.y.z.dfu -s 0x8000000
+```
+
+5) Restart the BatGizmo into normal operating mode by unplugging, then replugging the USB cable, this time **without** holding down the DFU button.
