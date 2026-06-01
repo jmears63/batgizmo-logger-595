@@ -29,6 +29,7 @@
 #include "settings.h"
 #include "gain.h"
 #include "buffer.h"
+#include "leds.h"
 
 #define JSMN_STRICT
 #include "jsmn.h"
@@ -55,6 +56,7 @@ static settings_t s_settings = {
 		latitude: 0,
 		logger_sampling_rate_index: 8,		// Sampling rate as multiples of 48 kHz: 5:240, 6:288, 7: 336, 8:384, 9:432: 10:480, 11:528
 		gated_recording: false,		// Will we write data to SD at the same time as acquiring it?
+		auto_disable_leds: false,
 		rtc_mute: false,
 
 		_trigger_thresholds: {0},
@@ -310,6 +312,12 @@ bool settings_parse_and_process_json_settings(const char *json)
 					if (json_get_bool(json, &token, &bool_value))
 						s_settings.gated_recording  = bool_value;
 				}
+				else if (json_eq_string(json, &token, "auto_disable_leds")) {
+					token = tokens[++i];
+					bool bool_value;
+					if (json_get_bool(json, &token, &bool_value))
+						s_settings.auto_disable_leds = bool_value;
+				}
 				else if (json_eq_string(json, &token, "rtc_mute")) {
 					token = tokens[++i];
 					bool bool_value;
@@ -326,6 +334,7 @@ bool settings_parse_and_process_json_settings(const char *json)
 
 	process_trigger_flags(&s_settings);
 	process_trigger_profile(&s_settings);
+	leds_set_auto_disable(s_settings.auto_disable_leds);
 
 	return true;
 }
@@ -433,6 +442,7 @@ size_t settings_get_json_settings_string(char *buf, size_t buflen)
 			"  \"disable_usb_msc\":%s,\n"				\
 			"  \"logger_sampling_rate_index\":%d,\n"	\
 			"  \"gated_recording\":%s,\n"				\
+			"  \"auto_disable_leds\":%s,\n"				\
 			"  \"rtc_mute\":%s\n"				\
 			"}\n",
 			s_settings._firmware_version,
@@ -449,6 +459,7 @@ size_t settings_get_json_settings_string(char *buf, size_t buflen)
 			s_settings.disable_usb_msc ? "true" : "false",
 			s_settings.logger_sampling_rate_index,
 			s_settings.gated_recording ? "true" : "false",
+			s_settings.auto_disable_leds ? "true" : "false",
 			s_settings.rtc_mute ? "true" : "false"
 		);
 

@@ -50,6 +50,7 @@ typedef struct {
 	float pretrigger_time_s;
 	int logger_sampling_rate_index;
 	bool gated_recording;
+	bool auto_disable_leds;
 	/** If true, stop LSE/RTC during active auto-mode capture to reduce 32.768 kHz pickup. */
 	bool rtc_mute;
 

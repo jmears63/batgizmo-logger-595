@@ -21,6 +21,8 @@
  * SOFTWARE.
  */
 
+#include <limits.h>
+
 #include "leds.h"
 #include "main.h"
 
@@ -28,6 +30,8 @@
 
 #define FLASH_DURATION_MS (200 / 2)
 #define SINGLE_BLINK_DURATION_MS 500
+#define AUTO_DISABLE_LEDS_DELAY_MS (60 * 1000)
+#define AUTO_DISABLE_LEDS_DELAY_TICKS ((AUTO_DISABLE_LEDS_DELAY_MS + MAIN_LOOP_DELAY_MS - 1) / MAIN_LOOP_DELAY_MS)
 
 // State that applies to all LEDS:
 static enum {
@@ -44,6 +48,9 @@ static int s_blink_end_ticks[NUM_LEDS] = { 0, 0, 0 };
 static int s_flash_counter = 0;
 static const int s_flashes_requested = 10;
 static int s_flash_next_ticks = 0;
+static int s_ticks_to_auto_disable = INT_MAX;
+static int s_current_main_tick_count = 0;
+static bool s_auto_disable_leds = false;
 
 static void do_blink(int led);
 static void do_set(int led, bool lit);
@@ -64,6 +71,7 @@ void leds_reset(void) {
 }
 
 void leds_main_processing(int main_tick_count) {
+	s_current_main_tick_count = main_tick_count;
 	if (s_flash_state != flash_state_none)
 		do_flash();
 	else {
@@ -110,6 +118,24 @@ void leds_start_flash(void) {
 	do_set(LEDS_ALL, true);
 }
 
+void leds_set_auto_disable(bool auto_disable_leds)
+{
+	s_auto_disable_leds = auto_disable_leds;
+	// Update the timer limit, even if there is no change in the mode, which has the effect of resetting the timer
+	// if the SD card is re-inserted after being removed.
+	leds_on_mode_changed(s_current_main_tick_count);
+}
+
+void leds_on_mode_changed(int main_tick_count)
+{
+	if (s_auto_disable_leds) {
+		s_ticks_to_auto_disable = main_tick_count + AUTO_DISABLE_LEDS_DELAY_TICKS;
+	}
+	else {
+		s_ticks_to_auto_disable = INT_MAX;
+	}
+}
+
 static void do_blink(int led) {
 	if (s_blink_state[led] == blink_state_on) {
 		if (HAL_GetTick() > s_blink_end_ticks[led]) {
@@ -148,6 +174,11 @@ static void do_flash() {
 }
 
 static void do_set(int led, bool lit) {
+	if (s_current_main_tick_count > s_ticks_to_auto_disable) {
+		led = LEDS_ALL;
+		lit = false;
+	}
+
 	const GPIO_PinState value = lit ? GPIO_PIN_RESET : GPIO_PIN_SET;
 	if (led == LEDS_ALL) {
 		HAL_GPIO_WritePin(GPIO_LED_R_GPIO_Port, GPIO_LED_R_Pin, value);

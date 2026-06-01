@@ -67,6 +67,7 @@ The BatGizmo firmware reads **`settings.json`** from the root of the SD card (sa
 | `location` | string | n/a | Optional. Two numbers: **latitude** and **longitude**, separated by whitespace (e.g. `"51.5 -0.12"`). Included in GUANO metadata if present. |
 | `logger_sampling_rate_index` | integer | `8` | Valid range **5–11**. Logger sampling rate is **`index × 48 kHz`**, so allows sampling rates of 240-528 kHz. When the detector is used in active mode as a USB microphone this setting is ignored and the sampling rate is 384 kHz |
 | `gated_recording` | boolean | `false` | If `true`, data acquisition is alternated with writing to SD card to achieve lowest noise recordings. In this mode the maximum duration of a recording segment is determined by the MCU cache size. |
+| `auto_disable_leds` | boolean | `false` | Optional. If `true`, LEDs are automatically disabled one minute after entering an operating mode or reinserting the SD card. This can be used to save battery power and avoid distracting lights. |
 | `rtc_mute` | boolean | `false` | Experimental - do not set. |
 
 ### Example

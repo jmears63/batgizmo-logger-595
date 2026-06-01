@@ -12,5 +12,6 @@
   "disable_usb_msc":false,
   "logger_sampling_rate_index":10,
   "gated_recording":false,
+  "auto_disable_leds":false,
   "rtc_mute":false
 }

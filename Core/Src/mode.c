@@ -41,7 +41,7 @@ static int s_tentative_tick_count = 0;
 // contact bounce, and intermediate positions of the switch as it is slid:
 #define MODE_SWITCH_DELAY_TICKS (1000 / MAIN_LOOP_DELAY_MS)
 
-static void switch_to_mode(mode_t mode);
+static void switch_to_mode(mode_t mode, int main_tick_count);
 
 void mode_init(void)
 {
@@ -87,7 +87,7 @@ void mode_main_processing(int main_tick_count)
 	if (switch_mode != s_mode) {
 		if (main_tick_count == 0) {
 			// Immediately adopt the the mode of the initial switch setting:
-			switch_to_mode(switch_mode);
+			switch_to_mode(switch_mode, main_tick_count);
 		}
 		else if (s_tentative_new_mode != switch_mode) {
 			s_tentative_new_mode = switch_mode;
@@ -99,13 +99,13 @@ void mode_main_processing(int main_tick_count)
 				leds_reset();	// Always clear the LEDs as we change mode.
 				// The mode switch has been in the same position for a while,
 				// so we can go ahead now and change mode:
-				switch_to_mode(s_tentative_new_mode);
+				switch_to_mode(s_tentative_new_mode, main_tick_count);
 			}
 		}
 	}
 }
 
-static void switch_to_mode(mode_t mode)
+static void switch_to_mode(mode_t mode, int main_tick_count)
 {
 	// Close with the current mode:
 	const mode_driver_t *mode_driver = mode_drivers[s_mode];
@@ -119,6 +119,7 @@ static void switch_to_mode(mode_t mode)
 	init_read_all_settings();
 
 	s_mode = mode;
+	leds_on_mode_changed(main_tick_count);
 
 	// Open the new mode:
 	mode_driver = mode_drivers[s_mode];

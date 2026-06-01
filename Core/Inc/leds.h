@@ -41,4 +41,6 @@ void leds_set(int led, bool lit);
 void leds_blink(leds_led_t);
 void leds_start_flash(void);
 void leds_reset(void);
+void leds_set_auto_disable(bool auto_disable_leds);
+void leds_on_mode_changed(int main_tick_count);
 #endif // MY_LEDS_H
