@@ -70,14 +70,14 @@ void MX_RTC_Init(void);
 
 /**
  * Stops the RTC peripheral and turns off the LSE (32.768 kHz) to reduce pickup in audio.
- * Call from auto mode open. Time is continued in software using HAL_GetTick() from the
- * RTC epoch captured here.
+ * Call when entering capture (any mode) if settings.rtc_mute is set. Time continues in
+ * software using HAL_GetTick() from the RTC epoch captured here.
  */
 void rtc_enter_low_noise_mode(void);
 
 /**
  * Re-enables LSE, re-inits the RTC, and sets calendar time from the tick-based estimate.
- * Call from auto mode close.
+ * Call when leaving capture / mode close. No-op if not in low-noise mode.
  */
 void rtc_exit_low_noise_mode(void);
 

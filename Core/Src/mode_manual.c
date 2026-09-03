@@ -43,6 +43,7 @@
 #include "recording.h"
 #include "trigger.h"
 #include "tusb_config.h"
+#include "rtc.h"
 
 #define BLINK_LEDS 1
 
@@ -65,6 +66,11 @@ static void init_manual_mode(void)
 
 static void open_manual_mode(void)
 {
+	if (settings_get()->rtc_mute) {
+		/* Stop LSE/RTC during capture to avoid 32.768 kHz pickup; time from ticks (see rtc.c). */
+		rtc_enter_low_noise_mode();
+	}
+
 	// Acquired data will be processed for the SD card:
 	const int sampling_rate = settings_get_logger_sampling_rate();
 	data_processor_buffers_reset(DATA_PROCESSOR_CONTINUOUS, sampling_rate);
@@ -98,6 +104,7 @@ static void close_manual_mode(void)
 	recording_close();
 	streaming_stop();
 	data_acquisition_set_processor(NULL);
+	rtc_exit_low_noise_mode();
 }
 
 void manual_mode_main_processing(int main_tick_count)

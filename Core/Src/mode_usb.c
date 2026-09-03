@@ -38,6 +38,8 @@
 #include "sd_lowlevel.h"
 #include "storage.h"
 #include "init.h"
+#include "settings.h"
+#include "rtc.h"
 
 #define BLINK_LEDS 1
 
@@ -110,6 +112,11 @@ static void stop_usb(void)
 
 static void open_usb_mode(void)
 {
+	if (settings_get()->rtc_mute) {
+		/* Stop LSE/RTC during capture to avoid 32.768 kHz pickup; time from ticks (see rtc.c). */
+		rtc_enter_low_noise_mode();
+	}
+
 	// Acquired data will be processed for UAC:
 	data_processor_uac_reset();
 	data_acquisition_set_processor(data_processor_uac);
@@ -142,6 +149,7 @@ static void close_usb_mode(void)
 	apc_stop();
 	streaming_stop();
 	data_acquisition_set_processor(NULL);
+	rtc_exit_low_noise_mode();
 }
 
 void usb_mode_main_processing(int main_tick_count)
